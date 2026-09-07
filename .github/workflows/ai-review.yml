@@ -17,13 +17,17 @@ on:
   issue_comment:
     types: [created]
   workflow_dispatch:
+    inputs:
+      pr:
+        description: 리뷰할 PR 번호
+        required: true
 
 permissions:
   contents: read
   pull-requests: write
 
 concurrency:
-  group: ai-review-${{ github.event.pull_request.number || github.event.issue.number }}
+  group: ai-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
   cancel-in-progress: true
 
 jobs:
@@ -40,7 +44,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
