@@ -103,7 +103,7 @@ git fetch origin && git switch feat/12-add-login
 ## 리뷰와 머지
 
 **머지 조건:** approve + 모든 conversation resolved + CI(`lint-test`)
-통과 + Ready 상태. `branch_ruleset_main.json` 기준 `main` 직접 push 금지.
+통과 + Ready 상태. `.github/branch_ruleset_main.json` 기준 `main` 직접 push 금지.
 
 **Squash and merge만 사용합니다.** 머지 커밋 제목은
 `<type>: <설명> (#PR번호)`. 머지 시 `Closes #`로 연결된 이슈가 자동

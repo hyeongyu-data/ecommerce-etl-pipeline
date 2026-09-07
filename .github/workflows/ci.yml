@@ -22,7 +22,7 @@ jobs:
       - uses: pre-commit/action@v3.0.1
 
       - name: 개발 도구 설치
-        run: python -m pip install -r requirements-dev.txt
+        run: python -m pip install -e ".[dev]"
 
       - name: Pytest
         run: pytest
