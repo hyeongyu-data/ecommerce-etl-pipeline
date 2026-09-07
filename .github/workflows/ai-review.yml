@@ -116,8 +116,7 @@ jobs:
 
           if [ "$CODE" != "200" ]; then
             echo "Groq API 오류 (HTTP ${CODE:-none}) — 리뷰를 건너뜁니다."
-            head -c 2000 /tmp/resp.json 2>/dev/null || true
-            echo
+            jq -r '.error.message // "(응답 본문 없음)"' /tmp/resp.json 2>/dev/null || true
             exit 0
           fi
 
@@ -127,8 +126,6 @@ jobs:
             /tmp/resp.json 2>/dev/null || true)"
           if [ -z "$REVIEW" ]; then
             echo "빈 응답 — 건너뜁니다."
-            head -c 2000 /tmp/resp.json 2>/dev/null || true
-            echo
             exit 0
           fi
 
