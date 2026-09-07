@@ -17,6 +17,7 @@ REQUIRED_FILES = [
     ".env.example",
     "SCHEMA.md",
     "Dockerfile",
+    ".dockerignore",
     "docker-compose.yaml",
     "dags/.gitkeep",
     ".github/workflows/ci.yml",
