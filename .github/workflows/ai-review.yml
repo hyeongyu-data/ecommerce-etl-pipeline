@@ -104,7 +104,8 @@ jobs:
 
           if [ "$CODE" != "200" ]; then
             echo "Gemini API 오류 (HTTP ${CODE:-none}) — 리뷰를 건너뜁니다."
-            jq -r '.error.message // empty' /tmp/resp.json 2>/dev/null || true
+            head -c 2000 /tmp/resp.json 2>/dev/null || true
+            echo
             exit 0
           fi
 
