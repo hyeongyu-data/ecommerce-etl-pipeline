@@ -120,6 +120,8 @@ jobs:
           REVIEW="$(jq -r '.choices[0].message.content // empty' /tmp/resp.json 2>/dev/null || true)"
           if [ -z "$REVIEW" ]; then
             echo "빈 응답 — 건너뜁니다."
+            head -c 2000 /tmp/resp.json 2>/dev/null || true
+            echo
             exit 0
           fi
 
