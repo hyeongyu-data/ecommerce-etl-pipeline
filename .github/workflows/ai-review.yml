@@ -6,7 +6,7 @@ name: AI PR Review
 # 모델은 아래 GROQ_MODEL 로 바꾼다. 키 발급: https://console.groq.com (신용카드 불필요)
 
 env:
-  GROQ_MODEL: llama-3.3-70b-versatile
+  GROQ_MODEL: openai/gpt-oss-20b
 
 on:
   pull_request:
