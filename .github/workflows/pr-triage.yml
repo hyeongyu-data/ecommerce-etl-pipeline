@@ -7,6 +7,7 @@ on:
 permissions:
   contents: read
   issues: write
+  pull-requests: write   # PR assignee 지정에 필요 (assignees 엔드포인트는 pull_requests=write 요구)
 
 jobs:
   assign-and-label:
