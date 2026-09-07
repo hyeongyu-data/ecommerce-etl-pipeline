@@ -1,3 +1,3 @@
 # 개발·CI 전용 도구. 런타임 의존성 아님. Dependabot(pip)이 이 파일을 갱신한다.
-ruff==0.6.9
+ruff==0.16.6
 pytest==8.3.3
