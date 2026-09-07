@@ -1,0 +1,19 @@
+# 프로젝트 메타데이터와 도구 설정. 런타임 의존성은 아직 없으며(코드 미착수),
+# 개발 도구는 requirements-dev.txt 로 관리한다(Dependabot pip 대상).
+[project]
+name = "ecommerce-etl-pipeline"
+version = "0.1.0"
+description = "이종 데이터소스(PG 주문·오픈마켓 주문·GA4 이벤트)를 Airflow로 수집·정제해 BigQuery에 통합 적재하는 미니 ETL 파이프라인"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+# E/F: pyflakes·pycodestyle, I: import 정렬, UP: 최신 문법, B: 흔한 버그
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["."]

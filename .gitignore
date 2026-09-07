@@ -10,5 +10,15 @@ Thumbs.db
 .vscode/
 *.swp
 
-# Build / dependencies — 언어에 맞게 추가하세요
-# 예) node_modules/  dist/  build/  target/  __pycache__/  .venv/
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# 데이터 산출물 (로컬 실행 결과, 커밋하지 않음)
+data/raw/
+data/staging/
+*.duckdb

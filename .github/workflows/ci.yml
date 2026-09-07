@@ -14,11 +14,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # 언어 무관 기본 검사 (pre-commit 훅: 공백/개행/YAML/시크릿 등)
       - uses: actions/setup-python@v6
         with:
-          python-version: "3.x"
+          python-version-file: ".python-version"
+
+      # 기본 훅(공백/개행/YAML/시크릿) + ruff 린트·포맷을 모든 파일에 실행
       - uses: pre-commit/action@v3.0.1
 
-      # TODO: 언어별 빌드/테스트 단계를 여기에 추가하세요.
-      #   예) npm ci && npm test  /  go test ./...  /  cargo test  /  pytest
+      - name: 개발 도구 설치
+        run: python -m pip install -r requirements-dev.txt
+
+      - name: Pytest
+        run: pytest
