@@ -1,53 +1,55 @@
 # ecommerce-etl-pipeline
 
-> 이종 데이터소스(PG 주문·오픈마켓 주문·GA4 이벤트)를 Airflow로 수집·정제해 BigQuery에 통합 적재하고
-> 대시보드로 보여주는 미니 ETL 파이프라인. 실행 계획: `/Users/buzz/Desktop/resume/resume_final.md` 부록,
-> second-brain [[취업준비-4주계획-2026-08-29]] 참고. (2026-09 진행 예정, 아직 미착수)
+> 이종 데이터소스(PG 주문·오픈마켓 주문·GA4 이벤트)를 Airflow로 수집·정제해 BigQuery에 통합
+> 적재하고 대시보드로 보여주는 미니 ETL 파이프라인.
 
-<!-- 배지 예시 (레포 경로에 맞게 수정하세요) -->
-<!-- ![CI](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg) -->
-<!-- ![License](https://img.shields.io/badge/license-MIT-blue.svg) -->
+<!-- ![CI](https://github.com/hyeongyu-data/ecommerce-etl-pipeline/actions/workflows/ci.yml/badge.svg) -->
 
-> **언어 무관 범용 스타터입니다.** 언어를 정하면 아래를 채우세요:
-> `.gitignore`(언어별 항목), `.pre-commit-config.yaml`(린터/포매터),
-> `.github/workflows/ci.yml`(빌드·테스트 단계), `dependabot.yml`(패키지 매니저).
-> Python 프로젝트라면 [github-basic-python](https://github.com/hyeongyu-data/github-basic-python) 템플릿을 쓰세요.
+## 배경
 
-## 🚀 새 프로젝트 시작 (셋업)
+이커머스 현장에서 결제(PG)·오픈마켓 주문 데이터를 수작업으로 대조·정산하던 경험을, 자동화된
+파이프라인으로 축소 재현하는 개인 프로젝트입니다. 서로 스키마가 다른 3개 소스를 하나의 통합
+주문 테이블로 모으고, 적재 과정에서 데이터 품질(누락·중복·이상치)을 검증합니다.
 
-1. **템플릿으로 레포 생성** — 위 `Use this template` 버튼, 또는:
-   ```shell
-   gh repo create <이름> --template hyeongyu-data/github-basic-base --private --clone
-   ```
-2. **placeholder 채우기** — `LICENSE`(이름·연도), `README.md`, `CLAUDE.md`(프로젝트 설명).
-3. **언어별 채우기** — `.gitignore`, `.pre-commit-config.yaml`(린터/포매터), `.github/workflows/ci.yml`(빌드·테스트), `dependabot.yml`(패키지 매니저).
-4. **로컬 세팅:**
-   ```shell
-   pip install pre-commit && pre-commit install   # 커밋 전 기본 검사
-   git config commit.template .gitmessage          # 커밋 메시지 양식
-   ```
-5. **main 브랜치 보호 적용** — 템플릿은 파일만 복제되므로 ruleset은 직접 걸어야 합니다(레포가 public이거나 GitHub Pro 필요). 혼자 쓰면 파일에서 `required_approving_review_count`를 `0`으로:
-   ```shell
-   gh api repos/<owner>/<repo>/rulesets --method POST --input branch_ruleset_main.json
-   ```
-6. **릴리스** — 라벨별 자동 분류(`.github/release.yml`):
-   ```shell
-   gh release create v0.1.0 --generate-notes
-   ```
+## 아키텍처
 
-> 1·4·5를 한 방에: `newproj <이름> [python|base] [private|public]` 헬퍼(`~/.newproj.zsh`).
-
-## Setup
-
-```shell
-pre-commit install   # 커밋 전 기본 검사 훅 (최초 1회, pre-commit 설치 필요)
+```
+[PG 주문 CSV]  ─┐
+[오픈마켓 API] ─┼─▶ Airflow DAG (수집)  ─▶  staging  ─▶  정제·통합  ─▶  BigQuery  ─▶  대시보드
+[GA4 이벤트]   ─┘        (소스별 1개)                  (통합 스키마)   orders_unified   (Streamlit)
 ```
 
-## Build / Test
+- **수집**: 소스마다 DAG 1개. PG는 날짜 파티션 CSV를 일별 배치처럼 읽고, 오픈마켓은 목업 API를
+  호출하며, GA4는 Data API로 이벤트를 가져옵니다(시간 부족 시 목업 JSON 대체).
+- **정제·통합**: 소스별 원본 필드를 [`SCHEMA.md`](SCHEMA.md)의 통합 주문 스키마로 매핑합니다.
+- **적재**: BigQuery `orders_unified`(날짜 파티션 + `source` 클러스터). 적재 전 품질 체크.
+- **대시보드**: 소스별 주문 수·매출 추이(대안: Looker Studio).
 
-<!-- 언어별 빌드·실행·테스트 명령을 적으세요. 예: npm test / go test ./... -->
+설계 판단 근거(왜 BigQuery인지, 왜 이 스키마인지)와 DDL 초안은 [`SCHEMA.md`](SCHEMA.md)에 있습니다.
 
-## Project layout
+## 개발 환경
+
+로컬 실행 환경은 새로 만들지 않고 [`hyeongyu-data/airflow-local`](https://github.com/hyeongyu-data/airflow-local)
+(Docker Compose Airflow)을 베이스로 재사용합니다.
+
+```shell
+python -m pip install -r requirements-dev.txt   # ruff, pytest
+pre-commit install                              # 커밋 전 검사 훅
+git config commit.template .gitmessage          # 커밋 메시지 양식
+```
+
+## 검증
+
+```shell
+pre-commit run --all-files   # 공백/개행/YAML/JSON/시크릿 + ruff
+ruff check . && ruff format --check .
+pytest
+git diff --check
+```
+
+## 저장소 구조
+
+기본 템플릿 구조를 유지하며, 루트에 프로젝트 파일만 추가했습니다.
 
 ```
 .
@@ -59,20 +61,22 @@ pre-commit install   # 커밋 전 기본 검사 훅 (최초 1회, pre-commit 설
 ├── branch_ruleset_main.json # main 브랜치 보호 규칙 (GitHub Ruleset import용)
 ├── CONTRIBUTING.md
 ├── LICENSE
+├── SCHEMA.md                # 통합 주문 스키마 설계 + DDL 초안
+├── pyproject.toml           # 프로젝트 메타데이터 · ruff/pytest 설정
+├── requirements-dev.txt     # 개발·CI 도구
+├── test_scaffolding.py      # 구성·스키마 문서 정합성 스모크 테스트
+├── .python-version
 ├── .editorconfig .gitattributes .gitignore .gitmessage
 └── .pre-commit-config.yaml
 ```
 
-## AI 에이전트 (Claude Code 등)
+DAG와 수집·정제 로직 디렉터리(`dags/`, `src/`)는 첫 DAG 이슈에서 추가됩니다.
 
-[`CLAUDE.md`](CLAUDE.md)가 진입점이고 상세 참고 문서는 `.claude/docs/`에
-있습니다 (워크플로·코드리뷰·계획리뷰·보안·금지사항). `AGENTS.md`는
-`CLAUDE.md`의, `.agents`는 `.claude`의 symlink입니다.
+## 기여
 
-## Contributing
-
-[CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요. 브랜치 규칙은 `<type>/<issue#>-설명` 형식입니다 (예: `feat/42-add-login`).
+브랜치·커밋·PR 규칙은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요.
+브랜치명은 `<type>/<issue#>-설명` 형식입니다 (예: `feat/4-add-pg-dag`).
 
 ## License
 
-MIT — 자세한 내용은 [LICENSE](LICENSE)를 참조하세요.
+MIT — [LICENSE](LICENSE) 참조.
