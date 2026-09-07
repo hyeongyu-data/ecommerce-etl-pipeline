@@ -1,12 +1,12 @@
 name: AI PR Review
 
-# 무료 Gemini로 PR에 리뷰 요약 코멘트를 단다.
-# 필수 체크가 아니며, GEMINI_API_KEY 시크릿이 없으면 조용히 건너뛴다.
+# 무료 Groq(OpenAI 호환)로 PR에 리뷰 요약 코멘트를 단다.
+# 필수 체크가 아니며, GROQ_API_KEY 시크릿이 없으면 조용히 건너뛴다.
 # 재실행: PR 대화에 `/ai-review` 코멘트. 문서 전용 PR은 자동 트리거에서 제외.
-# 모델은 아래 GEMINI_MODEL 로 바꾼다(Gemini는 구모델을 신규 사용자에게 막으므로 가끔 갱신 필요).
+# 모델은 아래 GROQ_MODEL 로 바꾼다. 키 발급: https://console.groq.com (신용카드 불필요)
 
 env:
-  GEMINI_MODEL: gemini-3.6-flash
+  GROQ_MODEL: llama-3.3-70b-versatile
 
 on:
   pull_request:
@@ -40,18 +40,18 @@ jobs:
        contains(github.event.comment.body, '/ai-review'))
     runs-on: ubuntu-latest
     steps:
-      - name: Gemini 리뷰 생성·게시
+      - name: Groq 리뷰 생성·게시
         env:
           GH_TOKEN: ${{ github.token }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
 
-          if [ -z "${GEMINI_API_KEY:-}" ]; then
-            echo "GEMINI_API_KEY 시크릿이 없어 AI 리뷰를 건너뜁니다."
-            echo "등록: 저장소 Settings > Secrets and variables > Actions > GEMINI_API_KEY"
+          if [ -z "${GROQ_API_KEY:-}" ]; then
+            echo "GROQ_API_KEY 시크릿이 없어 AI 리뷰를 건너뜁니다."
+            echo "등록: 저장소 Settings > Secrets and variables > Actions > GROQ_API_KEY"
             exit 0
           fi
 
@@ -89,39 +89,47 @@ jobs:
           ${DIFF}
           \`\`\`${NOTE}"
 
-          REQ="$(jq -n --arg s "$SYSTEM_PROMPT" --arg u "$USER_PROMPT" '{
-            systemInstruction: { parts: [ { text: $s } ] },
-            contents: [ { role: "user", parts: [ { text: $u } ] } ],
-            generationConfig: { maxOutputTokens: 2048, temperature: 0.3 }
-          }')"
+          REQ="$(jq -n \
+            --arg model "$GROQ_MODEL" \
+            --arg s "$SYSTEM_PROMPT" \
+            --arg u "$USER_PROMPT" \
+            '{
+              model: $model,
+              messages: [
+                { role: "system", content: $s },
+                { role: "user", content: $u }
+              ],
+              max_tokens: 2048,
+              temperature: 0.3
+            }')"
 
           CODE="$(curl -sS -o /tmp/resp.json -w '%{http_code}' \
             -X POST \
-            -H "x-goog-api-key: ${GEMINI_API_KEY}" \
+            -H "Authorization: Bearer ${GROQ_API_KEY}" \
             -H "Content-Type: application/json" \
             -d "$REQ" \
-            "https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent" || true)"
+            "https://api.groq.com/openai/v1/chat/completions" || true)"
 
           if [ "$CODE" != "200" ]; then
-            echo "Gemini API 오류 (HTTP ${CODE:-none}) — 리뷰를 건너뜁니다."
+            echo "Groq API 오류 (HTTP ${CODE:-none}) — 리뷰를 건너뜁니다."
             head -c 2000 /tmp/resp.json 2>/dev/null || true
             echo
             exit 0
           fi
 
-          REVIEW="$(jq -r '[.candidates[]?.content.parts[]?.text] | join("")' /tmp/resp.json 2>/dev/null || true)"
-          if [ -z "$REVIEW" ] || [ "$REVIEW" = "null" ]; then
+          REVIEW="$(jq -r '.choices[0].message.content // empty' /tmp/resp.json 2>/dev/null || true)"
+          if [ -z "$REVIEW" ]; then
             echo "빈 응답 — 건너뜁니다."
             exit 0
           fi
 
           {
-            echo "## 🤖 AI 리뷰 · Gemini"
+            echo "## 🤖 AI 리뷰 · Groq (${GROQ_MODEL})"
             echo
             printf '%s\n' "$REVIEW"
             echo
             echo "---"
-            echo "<sub>무료 Gemini 자동 리뷰입니다. 필수 체크가 아니며 \`/ai-review\` 코멘트로 재실행할 수 있습니다.</sub>"
+            echo "<sub>무료 Groq 자동 리뷰입니다. 필수 체크가 아니며 \`/ai-review\` 코멘트로 재실행할 수 있습니다.</sub>"
           } > /tmp/comment.md
 
           gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file /tmp/comment.md

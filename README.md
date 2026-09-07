@@ -80,12 +80,12 @@ docker compose config        # compose 문법 확인
 
 ## AI 리뷰
 
-PR을 열거나 Ready로 전환하면 무료 Gemini(모델은 `.github/workflows/ai-review.yml`의
-`GEMINI_MODEL`)가 자동으로 리뷰 요약 코멘트를 답니다. 필수 체크가 아니며, 피드백 반영 후
+PR을 열거나 Ready로 전환하면 무료 Groq(모델은 `.github/workflows/ai-review.yml`의
+`GROQ_MODEL`)가 자동으로 리뷰 요약 코멘트를 답니다. 필수 체크가 아니며, 피드백 반영 후
 재리뷰가 필요하면 PR 대화에 `/ai-review` 코멘트를 남깁니다. 문서 전용 PR은 자동 실행되지 않습니다.
 
-활성화하려면 [Google AI Studio](https://aistudio.google.com/apikey)에서 무료 API 키를 발급받아
-저장소 `Settings > Secrets and variables > Actions`에 `GEMINI_API_KEY`로 등록합니다. 키가 없으면
+활성화하려면 [Groq Console](https://console.groq.com/keys)에서 API 키를 발급받아(신용카드 불필요)
+저장소 `Settings > Secrets and variables > Actions`에 `GROQ_API_KEY`로 등록합니다. 키가 없으면
 워크플로는 조용히 건너뜁니다.
 
 ## 기여

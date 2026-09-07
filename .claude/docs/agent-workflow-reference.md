@@ -109,8 +109,8 @@ git fetch origin && git switch feat/12-add-login
 `<type>: <설명> (#PR번호)`. 머지 시 `Closes #`로 연결된 이슈가 자동
 close되고 브랜치가 삭제됩니다.
 
-**AI 자동 리뷰:** PR opened·ready_for_review 시 `ai-review.yml`이 무료 Gemini로
-리뷰 요약 코멘트를 답니다(필수 체크 아님, `GEMINI_API_KEY` 없으면 skip). 재리뷰는
+**AI 자동 리뷰:** PR opened·ready_for_review 시 `ai-review.yml`이 무료 Groq로
+리뷰 요약 코멘트를 답니다(필수 체크 아님, `GROQ_API_KEY` 없으면 skip). 재리뷰는
 `/ai-review` 코멘트, 문서 전용 PR은 자동 제외. `.claude/docs/agent-peer-review.md` 기준.
 
 ## Special Cases

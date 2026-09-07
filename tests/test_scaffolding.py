@@ -80,7 +80,7 @@ def test_dockerfile_extends_official_airflow():
 def test_ai_review_workflow_is_non_blocking_and_guarded():
     """AI 리뷰 워크플로: 필수 아님·시크릿 없으면 skip·문서 전용 PR 제외."""
     text = (ROOT / ".github/workflows/ai-review.yml").read_text(encoding="utf-8")
-    assert "GEMINI_API_KEY" in text
+    assert "GROQ_API_KEY" in text
     assert "paths-ignore" in text  # 문서 전용 PR 제외
     assert "/ai-review" in text  # 코멘트 재실행
     # 키가 없을 때 exit 0(머지 차단 안 함) 경로가 있어야 한다
