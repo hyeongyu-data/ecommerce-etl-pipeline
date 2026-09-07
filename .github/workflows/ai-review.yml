@@ -91,7 +91,7 @@ jobs:
           \`\`\`${NOTE}"
 
           # gpt-oss 계열은 추론 모델이라 reasoning이 토큰을 많이 먹는다.
-          # reasoning_effort=low + 넉넉한 max_tokens 로 최종 답(content)이 나오게 한다.
+          # 넉넉한 max_tokens 로 최종 답(content)까지 나오게 한다.
           REQ="$(jq -n \
             --arg model "$GROQ_MODEL" \
             --arg s "$SYSTEM_PROMPT" \
