@@ -1,0 +1,118 @@
+name: AI PR Review
+
+# 무료 Gemini(gemini-2.5-flash)로 PR에 리뷰 요약 코멘트를 단다.
+# 필수 체크가 아니며, GEMINI_API_KEY 시크릿이 없으면 조용히 건너뛴다.
+# 재실행: PR 대화에 `/ai-review` 코멘트. 문서 전용 PR은 자동 트리거에서 제외.
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number || github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: >-
+      (github.event_name == 'pull_request' && github.event.pull_request.draft == false) ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issue_comment' &&
+       github.event.issue.pull_request != null &&
+       contains(github.event.comment.body, '/ai-review'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Gemini 리뷰 생성·게시
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${GEMINI_API_KEY:-}" ]; then
+            echo "GEMINI_API_KEY 시크릿이 없어 AI 리뷰를 건너뜁니다."
+            echo "등록: 저장소 Settings > Secrets and variables > Actions > GEMINI_API_KEY"
+            exit 0
+          fi
+
+          DIFF="$(gh pr diff "$PR_NUMBER" --repo "$REPO" || true)"
+          if [ -z "$DIFF" ]; then
+            echo "빈 diff — 건너뜁니다."
+            exit 0
+          fi
+
+          NOTE=""
+          if [ "${#DIFF}" -gt 60000 ]; then
+            DIFF="$(printf '%s' "$DIFF" | head -c 60000)"
+            NOTE=$'\n\n(diff가 커서 앞부분 60KB만 검토했습니다.)'
+          fi
+
+          SYSTEM_PROMPT='당신은 이 저장소의 코드 리뷰어입니다. 한국어 격식체로 작성합니다.
+          발견 사항을 심각도 순으로 먼저 제시합니다:
+          1. 정확성 버그, 기존 동작의 의도치 않은 변경
+          2. 시크릿·자격 증명 노출
+          3. 입력 검증 누락, 권한 확대
+          4. 불필요한 복잡도·중복 (기존 코드로 대체 가능한지)
+          5. 테스트 누락
+          각 발견에 파일·라인 참조를 붙입니다. 칭찬은 나열하지 않습니다.
+          마지막에 "## 이해도 확인" 절을 두고, 이 PR의 핵심 로직에 대해 작성자가 답해야 하는
+          구체적 질문을 1~3개 적습니다 (일반론 금지, diff에 근거, 답은 쓰지 않음).
+          변경이 사소하거나 문서·포맷 전용이면 본문에 "특이사항 없음"만 적습니다.
+          (기준: .claude/docs/agent-peer-review.md)'
+
+          USER_PROMPT="저장소: ${REPO}
+          PR #${PR_NUMBER}
+
+          아래 diff를 리뷰하세요:
+
+          \`\`\`diff
+          ${DIFF}
+          \`\`\`${NOTE}"
+
+          REQ="$(jq -n --arg s "$SYSTEM_PROMPT" --arg u "$USER_PROMPT" '{
+            systemInstruction: { parts: [ { text: $s } ] },
+            contents: [ { role: "user", parts: [ { text: $u } ] } ],
+            generationConfig: { maxOutputTokens: 2048, temperature: 0.3 }
+          }')"
+
+          CODE="$(curl -sS -o /tmp/resp.json -w '%{http_code}' \
+            -X POST \
+            -H "x-goog-api-key: ${GEMINI_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "$REQ" \
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent" || true)"
+
+          if [ "$CODE" != "200" ]; then
+            echo "Gemini API 오류 (HTTP ${CODE:-none}) — 리뷰를 건너뜁니다."
+            jq -r '.error.message // empty' /tmp/resp.json 2>/dev/null || true
+            exit 0
+          fi
+
+          REVIEW="$(jq -r '[.candidates[]?.content.parts[]?.text] | join("")' /tmp/resp.json 2>/dev/null || true)"
+          if [ -z "$REVIEW" ] || [ "$REVIEW" = "null" ]; then
+            echo "빈 응답 — 건너뜁니다."
+            exit 0
+          fi
+
+          {
+            echo "## 🤖 AI 리뷰 · Gemini"
+            echo
+            printf '%s\n' "$REVIEW"
+            echo
+            echo "---"
+            echo "<sub>무료 Gemini 자동 리뷰입니다. 필수 체크가 아니며 \`/ai-review\` 코멘트로 재실행할 수 있습니다.</sub>"
+          } > /tmp/comment.md
+
+          gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file /tmp/comment.md

@@ -71,12 +71,22 @@ docker compose config        # compose 문법 확인
 ├── pyproject.toml        # 메타데이터 · 런타임/개발 의존성 · ruff/pytest 설정
 ├── README.md  LICENSE  CONTRIBUTING.md
 ├── CLAUDE.md             # AI 코딩 에이전트 진입점 (AGENTS.md·.agents는 symlink)
-├── .github/              # 이슈·PR 템플릿, CI, dependabot, branch_ruleset_main.json
+├── .github/              # 이슈·PR 템플릿, CI, AI 리뷰, dependabot, branch_ruleset_main.json
 ├── .claude/docs/         # AI 에이전트 참고 문서 (워크플로/리뷰/보안/금지)
 └── (dotfiles)            # .gitignore .editorconfig .python-version .pre-commit-config.yaml …
 ```
 
 수집·정제 로직 디렉터리(`src/`)는 첫 DAG 이슈에서 추가됩니다.
+
+## AI 리뷰
+
+PR을 열거나 Ready로 전환하면 무료 Gemini(`gemini-2.5-flash`)가 자동으로 리뷰 요약 코멘트를
+답니다(`.github/workflows/ai-review.yml`). 필수 체크가 아니며, 피드백 반영 후 재리뷰가 필요하면
+PR 대화에 `/ai-review` 코멘트를 남깁니다. 문서 전용 PR은 자동 실행되지 않습니다.
+
+활성화하려면 [Google AI Studio](https://aistudio.google.com/apikey)에서 무료 API 키를 발급받아
+저장소 `Settings > Secrets and variables > Actions`에 `GEMINI_API_KEY`로 등록합니다. 키가 없으면
+워크플로는 조용히 건너뜁니다.
 
 ## 기여
 
