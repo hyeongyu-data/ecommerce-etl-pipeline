@@ -1,8 +1,12 @@
 name: AI PR Review
 
-# 무료 Gemini(gemini-2.5-flash)로 PR에 리뷰 요약 코멘트를 단다.
+# 무료 Gemini로 PR에 리뷰 요약 코멘트를 단다.
 # 필수 체크가 아니며, GEMINI_API_KEY 시크릿이 없으면 조용히 건너뛴다.
 # 재실행: PR 대화에 `/ai-review` 코멘트. 문서 전용 PR은 자동 트리거에서 제외.
+# 모델은 아래 GEMINI_MODEL 로 바꾼다(Gemini는 구모델을 신규 사용자에게 막으므로 가끔 갱신 필요).
+
+env:
+  GEMINI_MODEL: gemini-3.6-flash
 
 on:
   pull_request:
@@ -92,7 +96,7 @@ jobs:
             -H "x-goog-api-key: ${GEMINI_API_KEY}" \
             -H "Content-Type: application/json" \
             -d "$REQ" \
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent" || true)"
+            "https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent" || true)"
 
           if [ "$CODE" != "200" ]; then
             echo "Gemini API 오류 (HTTP ${CODE:-none}) — 리뷰를 건너뜁니다."
