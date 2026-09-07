@@ -1,0 +1,14 @@
+# https://pre-commit.com  —  설치: pre-commit install
+# 언어 무관 기본 훅만 포함합니다. 언어별 린터/포매터는 아래에 추가하세요
+# (예: ruff, eslint/prettier, gofmt, rustfmt).
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: detect-private-key

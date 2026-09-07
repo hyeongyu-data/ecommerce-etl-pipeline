@@ -1,0 +1,64 @@
+name: Bug
+description: 버그를 보고합니다.
+title: "[BUG] "
+labels: ["bug"]
+assignees: ["hyeongyu-data"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        버그는 재현 가능한 정보가 가장 중요합니다. 같은 절차로 다시 발생시킬 수 있게 작성해 주세요.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 현상
+      description: 어떤 문제가 발생했는지 간략히 설명해 주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 재현 방법
+      description: 문제를 다시 확인할 수 있는 절차를 순서대로 적어 주세요.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대 동작
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 실제 동작
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 실행 환경
+      value: |
+        - OS:
+        - 런타임/버전:
+        - Branch / 버전:
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 로그
+      description: 에러 메시지나 관련 로그를 붙여 주세요.
+      render: shell
+    validations:
+      required: false

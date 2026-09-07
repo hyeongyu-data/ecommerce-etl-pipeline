@@ -1,0 +1,14 @@
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Build / dependencies — 언어에 맞게 추가하세요
+# 예) node_modules/  dist/  build/  target/  __pycache__/  .venv/

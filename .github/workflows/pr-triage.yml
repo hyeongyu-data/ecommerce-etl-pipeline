@@ -1,0 +1,44 @@
+name: PR Triage
+
+on:
+  pull_request_target:
+    types: [opened, reopened, edited]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  assign-and-label:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const match = pr.title.match(
+              /^(feat|fix|refactor|docs|test|chore)(?:\([^)]*\))?:/i,
+            );
+            const labels = {
+              feat: "feature",
+              fix: "bug",
+              refactor: "refactor",
+              docs: "documentation",
+              test: "test",
+              chore: "chore",
+            };
+
+            await github.rest.issues.addAssignees({
+              ...context.repo,
+              issue_number: pr.number,
+              assignees: [pr.user.login],
+            });
+
+            const label = match && labels[match[1].toLowerCase()];
+            if (label) {
+              await github.rest.issues.addLabels({
+                ...context.repo,
+                issue_number: pr.number,
+                labels: [label],
+              });
+            }
