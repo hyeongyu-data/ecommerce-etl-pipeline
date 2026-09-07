@@ -22,3 +22,8 @@ __pycache__/
 data/raw/
 data/staging/
 *.duckdb
+
+# Airflow 로컬 실행 산출물
+logs/
+plugins/
+dags/__pycache__/

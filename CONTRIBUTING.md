@@ -1,5 +1,20 @@
 # Contributing
 
+## 개발 환경 준비
+
+**전제**: Python 3.12, Docker(Desktop 또는 Engine + compose v2).
+
+```shell
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements-dev.txt                 # pre-commit, ruff, pytest
+pre-commit install
+git config commit.template .gitmessage
+```
+
+로컬 Airflow는 `cp .env.example .env` 후 `docker compose up -d`
+(웹 UI `http://localhost:8080`, 계정 `airflow`/`airflow`). 정리는 `docker compose down -v`.
+`uv` 등 개별 도구 없이 표준 `venv` + `pip` + `docker compose` 만으로 동작해야 합니다.
+
 ## 작업 흐름
 
 ```
@@ -37,5 +52,6 @@ git config commit.template .gitmessage
 
 ## 코드 스타일
 
-`pre-commit install` 후 커밋 시 기본 훅(공백/개행/YAML/시크릿 검사)이 자동
-실행됩니다. 언어별 린터/포매터는 `.pre-commit-config.yaml`에 추가하세요.
+`pre-commit install` 후 커밋 시 기본 훅(공백/개행/YAML/JSON/시크릿)과 `ruff`
+(린트·포맷)가 자동 실행됩니다. 설정은 `pyproject.toml`, 훅 목록은
+`.pre-commit-config.yaml`에 있습니다.

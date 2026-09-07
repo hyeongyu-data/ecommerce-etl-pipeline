@@ -1,0 +1,31 @@
+# docker build 컨텍스트에서 제외. 이미지에는 requirements.txt 만 COPY 되지만
+# 데몬에 불필요한 파일을 보내지 않도록(빌드 속도 + 시크릿 노출 최소) 걸러 둔다.
+.git
+.github
+.claude
+
+# 시크릿 / 로컬 환경
+.env
+.env.*
+!.env.example
+
+# 파이썬 아티팩트
+.venv
+venv
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# Airflow 로컬 실행 산출물
+logs/
+plugins/
+
+# 문서 / 개발 파일 (런타임 불필요)
+*.md
+test_*.py
+.pre-commit-config.yaml
+.editorconfig
+.gitattributes
+.gitmessage
