@@ -21,11 +21,11 @@
 
 - **수집**: 소스마다 DAG 1개. PG는 날짜 파티션 CSV를 일별 배치처럼 읽고, 오픈마켓은 목업 API를
   호출하며, GA4는 Data API로 이벤트를 가져옵니다(시간 부족 시 목업 JSON 대체).
-- **정제·통합**: 소스별 원본 필드를 [`SCHEMA.md`](SCHEMA.md)의 통합 주문 스키마로 매핑합니다.
+- **정제·통합**: 소스별 원본 필드를 [`docs/SCHEMA.md`](docs/SCHEMA.md)의 통합 주문 스키마로 매핑합니다.
 - **적재**: BigQuery `orders_unified`(날짜 파티션 + `source` 클러스터). 적재 전 품질 체크.
 - **대시보드**: 소스별 주문 수·매출 추이(대안: Looker Studio).
 
-설계 판단 근거(왜 BigQuery인지, 왜 이 스키마인지)와 DDL 초안은 [`SCHEMA.md`](SCHEMA.md)에 있습니다.
+설계 판단 근거(왜 BigQuery인지, 왜 이 스키마인지)와 DDL 초안은 [`docs/SCHEMA.md`](docs/SCHEMA.md)에 있습니다.
 
 ## 빠른 시작
 
@@ -60,29 +60,22 @@ docker compose config        # compose 문법 확인
 
 ## 저장소 구조
 
-기본 템플릿 구조를 유지하며, 루트에 프로젝트 파일만 추가했습니다.
-
 ```
 .
-├── .github/                 # 이슈·PR 템플릿, CI, dependabot
-├── .claude/docs/            # AI 에이전트 참고 문서 (워크플로/리뷰/보안/금지)
-├── CLAUDE.md                # AI 코딩 에이전트 진입점
-├── AGENTS.md → CLAUDE.md    # symlink
-├── .agents → .claude        # symlink
-├── branch_ruleset_main.json # main 브랜치 보호 규칙 (GitHub Ruleset import용)
-├── CONTRIBUTING.md
-├── LICENSE
-├── SCHEMA.md                # 통합 주문 스키마 설계 + DDL 초안
-├── docker-compose.yaml      # 로컬 Airflow (webserver+scheduler+postgres, LocalExecutor)
-├── Dockerfile               # 로컬 Airflow 이미지 (공식 이미지 + requirements.txt)
-├── requirements.txt         # DAG 런타임 의존성
-├── pyproject.toml           # 프로젝트 메타데이터 · ruff/pytest 설정
-├── requirements-dev.txt     # 개발·CI 도구
-├── test_scaffolding.py      # 구성·스키마 문서 정합성 스모크 테스트
-├── dags/                    # Airflow DAG (컨테이너에 바인드 마운트)
-├── .python-version
-├── .editorconfig .gitattributes .gitignore .gitmessage
-└── .pre-commit-config.yaml
+├── dags/                 # Airflow DAG (컨테이너에 바인드 마운트)
+├── docs/
+│   └── SCHEMA.md         # 통합 주문 스키마 설계 + DDL 초안
+├── tests/                # pytest 스모크 테스트
+├── docker-compose.yaml   # 로컬 Airflow (webserver+scheduler+postgres, LocalExecutor)
+├── Dockerfile            # 로컬 Airflow 이미지 (공식 이미지 + requirements.txt)
+├── requirements.txt      # DAG 런타임 의존성
+├── requirements-dev.txt  # 개발·CI 도구 (pre-commit, ruff, pytest)
+├── pyproject.toml        # 프로젝트 메타데이터 · ruff/pytest 설정
+├── README.md  LICENSE  CONTRIBUTING.md
+├── CLAUDE.md             # AI 코딩 에이전트 진입점 (AGENTS.md·.agents는 symlink)
+├── .github/              # 이슈·PR 템플릿, CI, dependabot, branch_ruleset_main.json
+├── .claude/docs/         # AI 에이전트 참고 문서 (워크플로/리뷰/보안/금지)
+└── (dotfiles)            # .gitignore .editorconfig .python-version .pre-commit-config.yaml …
 ```
 
 수집·정제 로직 디렉터리(`src/`)는 첫 DAG 이슈에서 추가됩니다.

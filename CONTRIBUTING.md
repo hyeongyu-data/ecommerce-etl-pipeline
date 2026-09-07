@@ -22,7 +22,7 @@ git config commit.template .gitmessage
 ```
 
 `main`에는 직접 push하지 않습니다. 모든 변경은 PR로 병합합니다
-(`branch_ruleset_main.json`을 GitHub Ruleset으로 import하면 강제됩니다).
+(`.github/branch_ruleset_main.json`을 GitHub Ruleset으로 import하면 강제됩니다).
 
 ## 브랜치 규칙
 

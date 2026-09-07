@@ -1,12 +1,9 @@
-"""저장소 기본 구성과 스키마 문서 정합성을 확인하는 스모크 테스트.
-
-폴더를 늘리지 않기 위해 저장소 루트에 둔다(기본 폴더 구조 유지).
-"""
+"""저장소 기본 구성과 스키마 문서 정합성을 확인하는 스모크 테스트."""
 
 import re
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 
 REQUIRED_FILES = [
     "pyproject.toml",
@@ -15,7 +12,7 @@ REQUIRED_FILES = [
     ".python-version",
     ".pre-commit-config.yaml",
     ".env.example",
-    "SCHEMA.md",
+    "docs/SCHEMA.md",
     "Dockerfile",
     ".dockerignore",
     "docker-compose.yaml",
@@ -81,18 +78,18 @@ def test_dockerfile_extends_official_airflow():
 
 
 def test_schema_doc_covers_all_columns_and_sources():
-    text = (ROOT / "SCHEMA.md").read_text(encoding="utf-8")
+    text = (ROOT / "docs/SCHEMA.md").read_text(encoding="utf-8")
     missing_cols = [c for c in UNIFIED_COLUMNS if f"`{c}`" not in text]
-    assert not missing_cols, f"SCHEMA.md에 없는 컬럼: {missing_cols}"
+    assert not missing_cols, f"docs/SCHEMA.md에 없는 컬럼: {missing_cols}"
     missing_src = [s for s in SOURCES if f"`{s}`" not in text]
-    assert not missing_src, f"SCHEMA.md에 없는 소스: {missing_src}"
+    assert not missing_src, f"docs/SCHEMA.md에 없는 소스: {missing_src}"
 
 
 def test_schema_doc_ddl_matches_columns():
-    """SCHEMA.md 안의 sql DDL 블록이 통합 컬럼 목록과 일치하는지."""
-    text = (ROOT / "SCHEMA.md").read_text(encoding="utf-8")
+    """docs/SCHEMA.md 안의 sql DDL 블록이 통합 컬럼 목록과 일치하는지."""
+    text = (ROOT / "docs/SCHEMA.md").read_text(encoding="utf-8")
     m = re.search(r"```sql\n(.*?)```", text, re.DOTALL)
-    assert m, "SCHEMA.md에 sql DDL 블록이 없다"
+    assert m, "docs/SCHEMA.md에 sql DDL 블록이 없다"
     ddl = m.group(1)
     assert "PARTITION BY order_date" in ddl
     assert "CLUSTER BY source" in ddl

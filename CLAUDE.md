@@ -39,9 +39,9 @@ symlink입니다.
 
 - 이종 데이터소스(PG 주문 CSV·오픈마켓 주문 API·GA4 이벤트)를 Airflow로 수집·정제해
   BigQuery에 통합 적재하고 대시보드로 보여주는 미니 ETL 파이프라인.
-- Python 3.12. 기본 템플릿 폴더 구조를 유지하고 파일은 루트에 둔다. DAG는 `dags/`,
-  통합 스키마 설계·DDL은 `SCHEMA.md`, 테스트는 `test_*.py`(루트). 수집·정제 로직 디렉터리
-  (`src/`)는 첫 DAG 이슈에서 생성. 문서: `README.md` / `.claude/docs/`.
+- Python 3.12. DAG는 `dags/`, 문서·통합 스키마 설계는 `docs/`(설계는 `docs/SCHEMA.md`),
+  테스트는 `tests/`. 수집·정제 로직 디렉터리(`src/`)는 첫 DAG 이슈에서 생성.
+  루트 dotfile은 도구가 루트에서 찾으므로 그대로 둔다. 문서: `README.md` / `.claude/docs/`.
 - 로컬 실행 환경은 `docker-compose.yaml`(Airflow LocalExecutor + Postgres)로 제공하며
   `docker compose up` 하나로 기동. 개발 도구는 표준 `venv` + `pip install -r requirements-dev.txt`.
 - 모든 산출물은 특정 머신 도구(`uv` 등)에 의존하지 않고 누구나의 로컬에서 재현 가능해야 한다.
