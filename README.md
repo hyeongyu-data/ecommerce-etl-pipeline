@@ -27,24 +27,35 @@
 
 설계 판단 근거(왜 BigQuery인지, 왜 이 스키마인지)와 DDL 초안은 [`SCHEMA.md`](SCHEMA.md)에 있습니다.
 
-## 개발 환경
+## 빠른 시작
 
-로컬 실행 환경은 새로 만들지 않고 [`hyeongyu-data/airflow-local`](https://github.com/hyeongyu-data/airflow-local)
-(Docker Compose Airflow)을 베이스로 재사용합니다.
+**전제**: Python 3.12, Docker(Desktop 또는 Engine + compose v2).
 
 ```shell
-python -m pip install -r requirements-dev.txt   # ruff, pytest
-pre-commit install                              # 커밋 전 검사 훅
-git config commit.template .gitmessage          # 커밋 메시지 양식
+# 1) 개발 도구 (가상환경 권장)
+python -m venv .venv && source .venv/bin/activate    # Windows: .venv\Scripts\activate
+pip install -r requirements-dev.txt                  # pre-commit, ruff, pytest
+pre-commit install
+git config commit.template .gitmessage
+
+# 2) 로컬 Airflow 기동
+cp .env.example .env                                 # Linux는 .env에 AIRFLOW_UID=$(id -u) 설정
+docker compose up -d                                 # 첫 실행은 이미지 빌드로 수 분
+# → http://localhost:8080  (airflow / airflow)
+
+docker compose down -v                               # 정리
 ```
+
+DAG는 `dags/`에 두면 컨테이너에 자동 반영됩니다. 개별 도구는 `uv` 등 없이
+표준 `venv` + `pip`만으로 동작합니다.
 
 ## 검증
 
 ```shell
 pre-commit run --all-files   # 공백/개행/YAML/JSON/시크릿 + ruff
-ruff check . && ruff format --check .
 pytest
 git diff --check
+docker compose config        # compose 문법 확인
 ```
 
 ## 저장소 구조
@@ -62,15 +73,19 @@ git diff --check
 ├── CONTRIBUTING.md
 ├── LICENSE
 ├── SCHEMA.md                # 통합 주문 스키마 설계 + DDL 초안
+├── docker-compose.yaml      # 로컬 Airflow (webserver+scheduler+postgres, LocalExecutor)
+├── Dockerfile               # 로컬 Airflow 이미지 (공식 이미지 + requirements.txt)
+├── requirements.txt         # DAG 런타임 의존성
 ├── pyproject.toml           # 프로젝트 메타데이터 · ruff/pytest 설정
 ├── requirements-dev.txt     # 개발·CI 도구
 ├── test_scaffolding.py      # 구성·스키마 문서 정합성 스모크 테스트
+├── dags/                    # Airflow DAG (컨테이너에 바인드 마운트)
 ├── .python-version
 ├── .editorconfig .gitattributes .gitignore .gitmessage
 └── .pre-commit-config.yaml
 ```
 
-DAG와 수집·정제 로직 디렉터리(`dags/`, `src/`)는 첫 DAG 이슈에서 추가됩니다.
+수집·정제 로직 디렉터리(`src/`)는 첫 DAG 이슈에서 추가됩니다.
 
 ## 기여
 
