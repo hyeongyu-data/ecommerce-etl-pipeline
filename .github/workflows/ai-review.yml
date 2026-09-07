@@ -104,7 +104,7 @@ jobs:
               ],
               max_tokens: 8192,
               temperature: 0.3,
-              reasoning_effort: "low"
+              reasoning_effort: "medium"
             }')"
 
           CODE="$(curl -sS -o /tmp/resp.json -w '%{http_code}' \
