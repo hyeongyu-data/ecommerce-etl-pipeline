@@ -3,10 +3,11 @@ name: AI PR Review
 # 무료 Groq(OpenAI 호환)로 PR에 리뷰 요약 코멘트를 단다.
 # 필수 체크가 아니며, GROQ_API_KEY 시크릿이 없으면 조용히 건너뛴다.
 # 재실행: PR 대화에 `/ai-review` 코멘트. 문서 전용 PR은 자동 트리거에서 제외.
-# 모델은 아래 GROQ_MODEL 로 바꾼다. 키 발급: https://console.groq.com (신용카드 불필요)
+# 모델은 아래 GROQ_MODEL 로 바꾼다(무료 키는 openai/gpt-oss-* 계열만 접근 가능).
+# 키 발급: https://console.groq.com (신용카드 불필요)
 
 env:
-  GROQ_MODEL: llama-3.1-8b-instant
+  GROQ_MODEL: openai/gpt-oss-120b
 
 on:
   pull_request:
@@ -89,6 +90,8 @@ jobs:
           ${DIFF}
           \`\`\`${NOTE}"
 
+          # gpt-oss 계열은 추론 모델이라 reasoning이 토큰을 많이 먹는다.
+          # reasoning_effort=low + 넉넉한 max_tokens 로 최종 답(content)이 나오게 한다.
           REQ="$(jq -n \
             --arg model "$GROQ_MODEL" \
             --arg s "$SYSTEM_PROMPT" \
@@ -99,8 +102,9 @@ jobs:
                 { role: "system", content: $s },
                 { role: "user", content: $u }
               ],
-              max_tokens: 2048,
-              temperature: 0.3
+              max_tokens: 8192,
+              temperature: 0.3,
+              reasoning_effort: "low"
             }')"
 
           CODE="$(curl -sS -o /tmp/resp.json -w '%{http_code}' \
@@ -117,7 +121,10 @@ jobs:
             exit 0
           fi
 
-          REVIEW="$(jq -r '.choices[0].message.content // empty' /tmp/resp.json 2>/dev/null || true)"
+          # content가 비면(추론에 토큰 소진) reasoning으로 대체한다.
+          REVIEW="$(jq -r '.choices[0].message as $m
+            | if ($m.content // "") != "" then $m.content else ($m.reasoning // "") end' \
+            /tmp/resp.json 2>/dev/null || true)"
           if [ -z "$REVIEW" ]; then
             echo "빈 응답 — 건너뜁니다."
             head -c 2000 /tmp/resp.json 2>/dev/null || true
