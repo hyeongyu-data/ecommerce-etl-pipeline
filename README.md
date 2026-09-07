@@ -1,6 +1,8 @@
-# 프로젝트 이름
+# ecommerce-etl-pipeline
 
-> 한 줄 소개 — 이 프로젝트가 무엇을 하는지 간단히 적으세요.
+> 이종 데이터소스(PG 주문·오픈마켓 주문·GA4 이벤트)를 Airflow로 수집·정제해 BigQuery에 통합 적재하고
+> 대시보드로 보여주는 미니 ETL 파이프라인. 실행 계획: `/Users/buzz/Desktop/resume/resume_final.md` 부록,
+> second-brain [[취업준비-4주계획-2026-08-29]] 참고. (2026-09 진행 예정, 아직 미착수)
 
 <!-- 배지 예시 (레포 경로에 맞게 수정하세요) -->
 <!-- ![CI](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg) -->
