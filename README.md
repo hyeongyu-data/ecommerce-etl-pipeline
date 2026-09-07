@@ -34,7 +34,7 @@
 ```shell
 # 1) 개발 도구 (가상환경 권장)
 python -m venv .venv && source .venv/bin/activate    # Windows: .venv\Scripts\activate
-pip install -r requirements-dev.txt                  # pre-commit, ruff, pytest
+pip install -e ".[dev]"                              # pre-commit, ruff, pytest
 pre-commit install
 git config commit.template .gitmessage
 
@@ -67,10 +67,8 @@ docker compose config        # compose 문법 확인
 │   └── SCHEMA.md         # 통합 주문 스키마 설계 + DDL 초안
 ├── tests/                # pytest 스모크 테스트
 ├── docker-compose.yaml   # 로컬 Airflow (webserver+scheduler+postgres, LocalExecutor)
-├── Dockerfile            # 로컬 Airflow 이미지 (공식 이미지 + requirements.txt)
-├── requirements.txt      # DAG 런타임 의존성
-├── requirements-dev.txt  # 개발·CI 도구 (pre-commit, ruff, pytest)
-├── pyproject.toml        # 프로젝트 메타데이터 · ruff/pytest 설정
+├── Dockerfile            # 로컬 Airflow 이미지 (공식 이미지 + pyproject 의존성)
+├── pyproject.toml        # 메타데이터 · 런타임/개발 의존성 · ruff/pytest 설정
 ├── README.md  LICENSE  CONTRIBUTING.md
 ├── CLAUDE.md             # AI 코딩 에이전트 진입점 (AGENTS.md·.agents는 symlink)
 ├── .github/              # 이슈·PR 템플릿, CI, dependabot, branch_ruleset_main.json

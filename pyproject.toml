@@ -1,11 +1,27 @@
-# 프로젝트 메타데이터와 도구 설정. 런타임 의존성은 아직 없으며(코드 미착수),
-# 개발 도구는 requirements-dev.txt 로 관리한다(Dependabot pip 대상).
+# 프로젝트 메타데이터와 의존성. 런타임(dependencies)·개발(optional-dependencies.dev)
+# 의존성을 모두 여기서 관리한다(Dependabot pip 대상). 별도 requirements 파일 없음.
 [project]
 name = "ecommerce-etl-pipeline"
 version = "0.1.0"
 description = "이종 데이터소스(PG 주문·오픈마켓 주문·GA4 이벤트)를 Airflow로 수집·정제해 BigQuery에 통합 적재하는 미니 ETL 파이프라인"
 requires-python = ">=3.12"
+# DAG 런타임 의존성. 첫 DAG 이슈에서 google-cloud-bigquery, pandas 등을 추가한다.
 dependencies = []
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit==3.8.0",
+    "ruff==0.6.9",
+    "pytest==8.3.3",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# 아직 패키지(src/)가 없으므로 메타데이터 전용 빌드. `pip install .` 이 의존성만 설치한다.
+bypass-selection = true
 
 [tool.ruff]
 target-version = "py312"

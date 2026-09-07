@@ -7,8 +7,6 @@ ROOT = Path(__file__).resolve().parent.parent
 
 REQUIRED_FILES = [
     "pyproject.toml",
-    "requirements-dev.txt",
-    "requirements.txt",
     ".python-version",
     ".pre-commit-config.yaml",
     ".env.example",
@@ -74,7 +72,18 @@ def test_compose_is_minimal_local_airflow():
 def test_dockerfile_extends_official_airflow():
     text = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     assert "FROM apache/airflow:" in text
-    assert "requirements.txt" in text
+    assert "pyproject.toml" in text
+    assert "pip install" in text
+
+
+def test_pyproject_declares_dev_tools():
+    text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert "[project.optional-dependencies]" in text
+    for tool in ("pre-commit", "ruff", "pytest"):
+        assert tool in text, f"pyproject.toml dev 의존성에 {tool} 없음"
+    # requirements 파일은 제거됨
+    assert not (ROOT / "requirements-dev.txt").exists()
+    assert not (ROOT / "requirements.txt").exists()
 
 
 def test_schema_doc_covers_all_columns_and_sources():

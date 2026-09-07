@@ -6,7 +6,7 @@
 
 ```shell
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements-dev.txt                 # pre-commit, ruff, pytest
+pip install -e ".[dev]"                             # pre-commit, ruff, pytest
 pre-commit install
 git config commit.template .gitmessage
 ```

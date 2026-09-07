@@ -1,4 +1,4 @@
-# docker build 컨텍스트에서 제외. 이미지에는 requirements.txt 만 COPY 되지만
+# docker build 컨텍스트에서 제외. 이미지에는 pyproject.toml 만 COPY 되지만
 # 데몬에 불필요한 파일을 보내지 않도록(빌드 속도 + 시크릿 노출 최소) 걸러 둔다.
 .git
 .github
@@ -24,7 +24,8 @@ plugins/
 
 # 문서 / 개발 파일 (런타임 불필요)
 *.md
-test_*.py
+docs/
+tests/
 .pre-commit-config.yaml
 .editorconfig
 .gitattributes
