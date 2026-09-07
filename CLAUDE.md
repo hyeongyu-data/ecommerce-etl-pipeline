@@ -37,8 +37,11 @@ symlink입니다.
 
 ## 프로젝트 맥락
 
-- <프로젝트 한 줄 설명을 여기에 적으세요.>
-- 소스·테스트 위치는 언어에 맞게 정하세요. 문서: `README.md` / `.claude/docs/`.
+- 이종 데이터소스(PG 주문 CSV·오픈마켓 주문 API·GA4 이벤트)를 Airflow로 수집·정제해
+  BigQuery에 통합 적재하고 대시보드로 보여주는 미니 ETL 파이프라인.
+- Python 3.12. DAG는 `dags/`, 수집·정제 로직은 `src/`, 테스트는 `tests/`(첫 DAG 이슈에서 생성).
+  통합 스키마 설계는 `docs/schema.md`, DDL은 `sql/ddl/`. 문서: `README.md` / `.claude/docs/`.
+- 로컬 실행 환경은 새로 만들지 않고 `hyeongyu-data/airflow-local`(Docker Compose Airflow)을 재사용.
 - 상세 워크플로(브랜치·커밋·PR): `.claude/docs/agent-workflow-reference.md`.
 
 ## 핵심 규칙
