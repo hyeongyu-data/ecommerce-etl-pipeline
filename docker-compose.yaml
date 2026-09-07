@@ -1,0 +1,104 @@
+# 로컬 개발용 Airflow. 운영 배포용이 아니다.
+# 기동:  docker compose up -d       (첫 실행은 이미지 빌드로 몇 분 소요)
+# 웹 UI: http://localhost:8080  (airflow / airflow)
+# 정리:  docker compose down -v
+#
+# 강의용 airflow-local 대비 단순화: LocalExecutor 채택으로 Celery/Redis 제거,
+# 이 프로젝트에 불필요한 MySQL/FastAPI 제거. dags 만 호스트 바인드, logs/plugins 는
+# 명명 볼륨이라 호스트에 디렉터리를 만들 필요가 없다.
+
+name: ecommerce-etl-pipeline
+
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    args:
+      AIRFLOW_VERSION: ${AIRFLOW_VERSION:-2.10.3}
+  image: ecommerce-etl-pipeline/airflow:${AIRFLOW_VERSION:-2.10.3}
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
+    AIRFLOW__CORE__FERNET_KEY: ""
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+    TZ: Asia/Seoul
+    AIRFLOW__WEBSERVER__DEFAULT_UI_TIMEZONE: Asia/Seoul
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - airflow-logs:/opt/airflow/logs
+    - airflow-plugins:/opt/airflow/plugins
+  user: "${AIRFLOW_UID:-50000}:0"
+
+services:
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+
+  airflow-init:
+    <<: *airflow-common
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username "${_AIRFLOW_WWW_USER_USERNAME:-airflow}" \
+          --password "${_AIRFLOW_WWW_USER_PASSWORD:-airflow}" \
+          --firstname airflow --lastname admin --role Admin \
+          --email admin@example.com || true
+    user: "0:0"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+
+volumes:
+  postgres-db:
+  airflow-logs:
+  airflow-plugins:

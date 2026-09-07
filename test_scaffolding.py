@@ -11,10 +11,14 @@ ROOT = Path(__file__).resolve().parent
 REQUIRED_FILES = [
     "pyproject.toml",
     "requirements-dev.txt",
+    "requirements.txt",
     ".python-version",
     ".pre-commit-config.yaml",
     ".env.example",
     "SCHEMA.md",
+    "Dockerfile",
+    "docker-compose.yaml",
+    "dags/.gitkeep",
     ".github/workflows/ci.yml",
 ]
 
@@ -57,6 +61,22 @@ def test_env_example_has_no_real_values():
         assert "=" in stripped, f"형식 오류: {stripped!r}"
         key, _, value = stripped.partition("=")
         assert value == "" or value == "local", f"실제 값으로 보이는 항목: {key}"
+
+
+def test_compose_is_minimal_local_airflow():
+    """docker-compose 는 LocalExecutor 기반 최소 구성(Celery/Redis/MySQL 없음)."""
+    lines = (ROOT / "docker-compose.yaml").read_text(encoding="utf-8").splitlines()
+    body = "\n".join(ln for ln in lines if not ln.lstrip().startswith("#")).lower()
+    for needed in ("airflow-webserver", "airflow-scheduler", "postgres", "localexecutor"):
+        assert needed in body, f"docker-compose.yaml 에 {needed} 없음"
+    for excluded in ("redis", "celeryexecutor", "mysql", "flower"):
+        assert excluded not in body, f"docker-compose.yaml 에 불필요한 {excluded} 포함"
+
+
+def test_dockerfile_extends_official_airflow():
+    text = (ROOT / "Dockerfile").read_text(encoding="utf-8")
+    assert "FROM apache/airflow:" in text
+    assert "requirements.txt" in text
 
 
 def test_schema_doc_covers_all_columns_and_sources():
