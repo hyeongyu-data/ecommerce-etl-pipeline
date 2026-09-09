@@ -46,8 +46,27 @@ docker compose up -d                                 # 첫 실행은 이미지 �
 docker compose down -v                               # 정리
 ```
 
-DAG는 `dags/`에 두면 컨테이너에 자동 반영됩니다. 개별 도구는 `uv` 등 없이
-표준 `venv` + `pip`만으로 동작합니다.
+DAG는 `dags/`에 두면 컨테이너에 자동 반영됩니다(단, DAG가 import 하는 `ecommerce_etl`
+패키지는 이미지에 설치되므로 의존성이 바뀌면 `docker compose build` 필요). 개별 도구는
+`uv` 등 없이 표준 `venv` + `pip`만으로 동작합니다.
+
+## DAG 1 — PG 주문 수집
+
+합성 PG 주문을 날짜 파티션으로 수집·정제해 staging(parquet)에 적재합니다.
+`generate_raw → transform_to_staging → quality_check`(통합 스키마 매핑 + `SCHEMA.md` Q1~Q7).
+
+```shell
+# 특정 날짜 실행
+docker compose exec airflow-scheduler airflow dags test pg_orders_ingest 2026-09-01
+# → data/staging/pg/order_date=2026-09-01/orders.parquet
+
+# 또는 Airflow UI(localhost:8080)에서 pg_orders_ingest 트리거
+
+# 로컬에서 원천만 미리 생성해 눈으로 확인
+python scripts/gen_pg_orders.py --start 2026-09-01 --end 2026-09-07
+```
+
+BigQuery 적재는 별도 DAG로 이어집니다(계획 9~10일차).
 
 ## 검증
 
@@ -62,12 +81,17 @@ docker compose config        # compose 문법 확인
 
 ```
 .
+├── src/ecommerce_etl/    # 수집·정제 코어 로직 (Airflow 무관, 순수 파이썬)
+│   ├── schema.py         # 통합 18컬럼 정의 (단일 출처)
+│   ├── quality.py        # 데이터 품질 검사 Q1~Q7
+│   └── pg/               # PG 소스: generate(합성) · transform(통합 매핑)
 ├── dags/                 # Airflow DAG (컨테이너에 바인드 마운트)
-├── docs/
-│   └── SCHEMA.md         # 통합 주문 스키마 설계 + DDL 초안
-├── tests/                # pytest 스모크 테스트
+├── scripts/              # 로컬 편의 스크립트 (합성 데이터 생성 등)
+├── data/                 # raw/·staging/ 데이터 (git 제외, 컨테이너에 마운트)
+├── docs/SCHEMA.md        # 통합 주문 스키마 설계 + DDL
+├── tests/                # pytest
 ├── docker-compose.yaml   # 로컬 Airflow (webserver+scheduler+postgres, LocalExecutor)
-├── Dockerfile            # 로컬 Airflow 이미지 (공식 이미지 + pyproject 의존성)
+├── Dockerfile            # 로컬 Airflow 이미지 (공식 이미지 + ecommerce_etl + 의존성)
 ├── pyproject.toml        # 메타데이터 · 런타임/개발 의존성 · ruff/pytest 설정
 ├── README.md  LICENSE  CONTRIBUTING.md
 ├── CLAUDE.md             # AI 코딩 에이전트 진입점 (AGENTS.md·.agents는 symlink)
@@ -75,8 +99,6 @@ docker compose config        # compose 문법 확인
 ├── .claude/docs/         # AI 에이전트 참고 문서 (워크플로/리뷰/보안/금지)
 └── (dotfiles)            # .gitignore .editorconfig .python-version .pre-commit-config.yaml …
 ```
-
-수집·정제 로직 디렉터리(`src/`)는 첫 DAG 이슈에서 추가됩니다.
 
 ## AI 리뷰
 
