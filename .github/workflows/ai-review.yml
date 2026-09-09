@@ -27,6 +27,7 @@ permissions:
   contents: read
   pull-requests: write
   issues: write
+  id-token: write # claude-code-action이 OIDC로 GitHub 토큰을 교환한다
   actions: read
 
 concurrency:
