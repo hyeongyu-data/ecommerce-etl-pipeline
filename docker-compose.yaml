@@ -25,8 +25,11 @@ x-airflow-common: &airflow-common
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
     TZ: Asia/Seoul
     AIRFLOW__WEBSERVER__DEFAULT_UI_TIMEZONE: Asia/Seoul
+    ETL_DATA_DIR: ${ETL_DATA_DIR:-/opt/airflow/data}
+    PG_QUALITY_MAX_VIOLATION_RATE: ${PG_QUALITY_MAX_VIOLATION_RATE:-0.01}
   volumes:
     - ./dags:/opt/airflow/dags
+    - ./data:/opt/airflow/data
     - airflow-logs:/opt/airflow/logs
     - airflow-plugins:/opt/airflow/plugins
   user: "${AIRFLOW_UID:-50000}:0"

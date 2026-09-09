@@ -2,7 +2,9 @@
 
 3개 이종 소스(PG 주문·오픈마켓 주문·GA4 이벤트)를 하나의 BigQuery 테이블 `orders_unified`로
 모은다. 이 문서는 통합 스키마, 소스별 필드 매핑, 데이터 품질 규칙, 설계 판단 근거를 정리한다.
-정합성은 `test_scaffolding.py`가 검증한다(이 문서와 DDL 블록이 어긋나면 CI 실패).
+
+**컬럼 정의의 단일 출처는 `src/ecommerce_etl/schema.py`** 이며, `test_schema.py`가 이 문서의
+표·아래 DDL 블록·코드가 모두 일치하는지 검증한다(어긋나면 CI 실패).
 
 ## 1. 통합 스키마 (`orders_unified`)
 
