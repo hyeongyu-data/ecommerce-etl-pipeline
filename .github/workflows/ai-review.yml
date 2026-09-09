@@ -69,12 +69,14 @@ jobs:
             exit 0
           fi
 
+          # Groq 무료 티어 TPM(8000 = 입력 + max_tokens)에 맞춰 앞부분만 검토한다.
+          # 바이트 절단이 UTF-8 문자 중간을 자를 수 있어 깨진 시퀀스를 제거한다
+          # (iconv는 잘린 끝문자에 대해 exit 1을 내므로 || true 로 무시한다).
+          LIMIT=14000
           NOTE=""
-          if [ "${#DIFF}" -gt 60000 ]; then
-            # 바이트 절단이 UTF-8 문자 중간을 자를 수 있어 깨진 시퀀스를 제거한다
-            # (iconv는 잘린 끝문자에 대해 exit 1을 내므로 || true 로 무시한다).
-            DIFF="$(printf '%s' "$DIFF" | head -c 60000 | iconv -f UTF-8 -t UTF-8 -c || true)"
-            NOTE=$'\n\n(diff가 커서 앞부분 60KB만 검토했습니다.)'
+          if [ "${#DIFF}" -gt "$LIMIT" ]; then
+            DIFF="$(printf '%s' "$DIFF" | head -c "$LIMIT" | iconv -f UTF-8 -t UTF-8 -c || true)"
+            NOTE=$'\n\n(무료 모델 토큰 한도로 diff 앞 14KB만 검토했습니다. 전체 리뷰는 사람이 확인하십시오.)'
           fi
 
           SYSTEM_PROMPT='당신은 이 저장소의 코드 리뷰어입니다. 한국어 격식체로 작성합니다.
@@ -99,8 +101,8 @@ jobs:
           ${DIFF}
           \`\`\`${NOTE}"
 
-          # gpt-oss 계열은 추론 모델이라 reasoning이 토큰을 많이 먹는다.
-          # 넉넉한 max_tokens 로 최종 답(content)까지 나오게 한다.
+          # 무료 티어 TPM(8000) = 입력 + max_tokens 이므로 출력 예산을 보수적으로 잡는다.
+          # gpt-oss는 추론 모델이라 reasoning_effort=medium 으로 최종 답이 나오게 한다.
           REQ="$(jq -n \
             --arg model "$GROQ_MODEL" \
             --arg s "$SYSTEM_PROMPT" \
@@ -111,7 +113,7 @@ jobs:
                 { role: "system", content: $s },
                 { role: "user", content: $u }
               ],
-              max_tokens: 8192,
+              max_tokens: 2600,
               temperature: 0.3,
               reasoning_effort: "medium"
             }')"
