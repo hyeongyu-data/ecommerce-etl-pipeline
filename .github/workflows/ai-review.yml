@@ -1,13 +1,13 @@
 name: AI PR Review
 
-# 무료 Groq(OpenAI 호환)로 PR에 리뷰 요약 코멘트를 단다.
-# 필수 체크가 아니며, GROQ_API_KEY 시크릿이 없으면 조용히 건너뛴다.
+# Anthropic Claude(claude-code-action)로 PR을 리뷰한다.
+# 심각도 순 요약 코멘트 + diff 라인에 "이해도 확인:" inline 코멘트.
+# 필수 체크가 아니며, GUDOKPIN_API_KEY(Anthropic API 키) 시크릿이 없으면 조용히 건너뛴다.
 # 재실행: PR 대화에 `/ai-review` 코멘트. 문서 전용 PR은 자동 트리거에서 제외.
-# 모델은 아래 GROQ_MODEL 로 바꾼다(무료 키는 openai/gpt-oss-* 계열만 접근 가능).
-# 키 발급: https://console.groq.com (신용카드 불필요)
+# 모델은 아래 CLAUDE_MODEL 로 바꾼다.
 
 env:
-  GROQ_MODEL: openai/gpt-oss-120b
+  CLAUDE_MODEL: claude-sonnet-5
 
 on:
   pull_request:
@@ -26,6 +26,9 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  issues: write
+  id-token: write # claude-code-action이 OIDC로 GitHub 토큰을 교환한다
+  actions: read
 
 concurrency:
   group: ai-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
@@ -41,112 +44,62 @@ jobs:
        contains(github.event.comment.body, '/ai-review'))
     runs-on: ubuntu-latest
     steps:
-      - name: Groq 리뷰 생성·게시
+      - name: 시크릿 확인
+        id: guard
         env:
-          GH_TOKEN: ${{ github.token }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
-          REPO: ${{ github.repository }}
+          KEY: ${{ secrets.GUDOKPIN_API_KEY }}
         run: |
-          set -euo pipefail
-
-          if [ -z "${GROQ_API_KEY:-}" ]; then
-            echo "GROQ_API_KEY 시크릿이 없어 AI 리뷰를 건너뜁니다."
-            echo "등록: 저장소 Settings > Secrets and variables > Actions > GROQ_API_KEY"
-            exit 0
+          if [ -n "${KEY:-}" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "GUDOKPIN_API_KEY 시크릿이 없어 AI 리뷰를 건너뜁니다."
+            echo "등록: 저장소 Settings > Secrets and variables > Actions > GUDOKPIN_API_KEY"
           fi
 
-          case "${PR_NUMBER:-}" in
-            "" | *[!0-9]*)
-              echo "PR 번호가 유효하지 않습니다 (${PR_NUMBER:-없음}) — 건너뜁니다."
-              exit 0
-              ;;
-          esac
+      - name: Checkout
+        if: steps.guard.outputs.ok == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-          DIFF="$(gh pr diff "$PR_NUMBER" --repo "$REPO" || true)"
-          if [ -z "$DIFF" ]; then
-            echo "빈 diff — 건너뜁니다."
-            exit 0
-          fi
+      - name: Claude PR 리뷰
+        if: steps.guard.outputs.ok == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.GUDOKPIN_API_KEY }}
+          trigger_phrase: "/ai-review"
+          prompt: |
+            이 저장소의 코드 리뷰어로서 아래 PR을 검토하십시오.
 
-          # Groq 무료 티어 TPM(8000 = 입력 + max_tokens)에 맞춰 앞부분만 검토한다.
-          # 바이트 절단이 UTF-8 문자 중간을 자를 수 있어 깨진 시퀀스를 제거한다
-          # (iconv는 잘린 끝문자에 대해 exit 1을 내므로 || true 로 무시한다).
-          LIMIT=14000
-          NOTE=""
-          if [ "${#DIFF}" -gt "$LIMIT" ]; then
-            DIFF="$(printf '%s' "$DIFF" | head -c "$LIMIT" | iconv -f UTF-8 -t UTF-8 -c || true)"
-            NOTE=$'\n\n(무료 모델 토큰 한도로 diff 앞 14KB만 검토했습니다. 전체 리뷰는 사람이 확인하십시오.)'
-          fi
+            Repository: ${{ github.repository }}
+            PR number: ${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
 
-          SYSTEM_PROMPT='당신은 이 저장소의 코드 리뷰어입니다. 한국어 격식체로 작성합니다.
-          발견 사항을 심각도 순으로 먼저 제시합니다:
-          1. 정확성 버그, 기존 동작의 의도치 않은 변경
-          2. 시크릿·자격 증명 노출
-          3. 입력 검증 누락, 권한 확대
-          4. 불필요한 복잡도·중복 (기존 코드로 대체 가능한지)
-          5. 테스트 누락
-          각 발견에 파일·라인 참조를 붙입니다. 칭찬은 나열하지 않습니다.
-          마지막에 "## 이해도 확인" 절을 두고, 이 PR의 핵심 로직에 대해 작성자가 답해야 하는
-          구체적 질문을 1~3개 적습니다 (일반론 금지, diff에 근거, 답은 쓰지 않음).
-          변경이 사소하거나 문서·포맷 전용이면 본문에 "특이사항 없음"만 적습니다.
-          (기준: .claude/docs/agent-peer-review.md)'
+            언어는 한국어 격식체입니다. 저장소 규칙은 `.claude/docs/agent-peer-review.md` 를 따릅니다.
 
-          USER_PROMPT="저장소: ${REPO}
-          PR #${PR_NUMBER}
+            발견 사항을 심각도 순으로 제시합니다:
+            1. 정확성 버그, 기존 동작의 의도치 않은 변경
+            2. 시크릿·자격 증명 노출
+            3. 입력 검증 누락, 권한 확대
+            4. 불필요한 복잡도·중복 (기존 코드로 대체 가능한지)
+            5. 테스트 누락
+            칭찬은 나열하지 않습니다. 각 발견에 파일·라인을 답니다.
+            추측이 아니라 diff와 저장소 코드에 근거해서만 지적합니다.
 
-          아래 diff를 리뷰하세요:
+            이해도 확인 (inline):
+            - 이 PR의 핵심 로직에 대해 작성자가 답해야 하는 구체적 질문 1~3개를,
+              diff의 가장 관련 있는 변경 라인에 inline 리뷰 코멘트로 답니다.
+              최종 요약에만 넣지 마십시오.
+            - 안전하게 소유·유지·운영하려면 반드시 이해해야 하는 로직만 묻습니다
+              (동작 변경, 엣지 케이스, 실패 모드, 상태 전이, 데이터 계약, 롤백/운영 영향).
+            - 일반적 베스트프랙티스 상식은 묻지 않습니다. 답은 코멘트에 쓰지 않습니다.
+            - 각 inline 코멘트는 "이해도 확인:" 으로 시작합니다.
+            - PR이 사소하거나 문서·포맷·기계적 변경이면 이해도 확인 코멘트를 달지 않습니다.
 
-          \`\`\`diff
-          ${DIFF}
-          \`\`\`${NOTE}"
-
-          # 무료 티어 TPM(8000) = 입력 + max_tokens 이므로 출력 예산을 보수적으로 잡는다.
-          # gpt-oss는 추론 모델이라 reasoning_effort=medium 으로 최종 답이 나오게 한다.
-          REQ="$(jq -n \
-            --arg model "$GROQ_MODEL" \
-            --arg s "$SYSTEM_PROMPT" \
-            --arg u "$USER_PROMPT" \
-            '{
-              model: $model,
-              messages: [
-                { role: "system", content: $s },
-                { role: "user", content: $u }
-              ],
-              max_tokens: 2600,
-              temperature: 0.3,
-              reasoning_effort: "medium"
-            }')"
-
-          CODE="$(curl -sS -o /tmp/resp.json -w '%{http_code}' \
-            -X POST \
-            -H "Authorization: Bearer ${GROQ_API_KEY}" \
-            -H "Content-Type: application/json" \
-            -d "$REQ" \
-            "https://api.groq.com/openai/v1/chat/completions" || true)"
-
-          if [ "$CODE" != "200" ]; then
-            echo "Groq API 오류 (HTTP ${CODE:-none}) — 리뷰를 건너뜁니다."
-            jq -r '.error.message // "(응답 본문 없음)"' /tmp/resp.json 2>/dev/null || true
-            exit 0
-          fi
-
-          # content가 비면(추론에 토큰 소진) reasoning으로 대체한다.
-          REVIEW="$(jq -r '.choices[0].message as $m
-            | if ($m.content // "") != "" then $m.content else ($m.reasoning // "") end' \
-            /tmp/resp.json 2>/dev/null || true)"
-          if [ -z "$REVIEW" ]; then
-            echo "빈 응답 — 건너뜁니다."
-            exit 0
-          fi
-
-          {
-            echo "## 🤖 AI 리뷰 · Groq (${GROQ_MODEL})"
-            echo
-            printf '%s\n' "$REVIEW"
-            echo
-            echo "---"
-            echo "<sub>무료 Groq 자동 리뷰입니다. 필수 체크가 아니며 \`/ai-review\` 코멘트로 재실행할 수 있습니다.</sub>"
-          } > /tmp/comment.md
-
-          gh pr comment "$PR_NUMBER" --repo "$REPO" --body-file /tmp/comment.md
+            마지막에 요약을 `gh pr comment` 로 PR 대화에 한 번 게시합니다.
+            요약 끝에 다음 줄을 답니다:
+            "Claude 자동 리뷰입니다. 필수 체크가 아니며 `/ai-review` 코멘트로 재실행할 수 있습니다."
+          claude_args: |
+            --model ${{ env.CLAUDE_MODEL }}
+            --max-turns 20
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
