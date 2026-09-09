@@ -62,12 +62,3 @@ def transform(
     out = out[list(schema.UNIFIED_COLUMNS)]
     non_object = {c: t for c, t in schema.PANDAS_DTYPES.items() if t != "object"}
     return out.astype(non_object)
-
-
-def write_staging(df: pd.DataFrame, staging_dir: str | Path, order_date) -> Path:
-    """`staging_dir/order_date=YYYY-MM-DD/orders.parquet` 로 쓴다. 경로를 반환."""
-    part_dir = Path(staging_dir) / f"order_date={order_date.isoformat()}"
-    part_dir.mkdir(parents=True, exist_ok=True)
-    path = part_dir / "orders.parquet"
-    df.to_parquet(path, index=False)
-    return path

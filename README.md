@@ -66,6 +66,18 @@ docker compose exec airflow-scheduler airflow dags test pg_orders_ingest 2026-09
 python scripts/gen_pg_orders.py --start 2026-09-01 --end 2026-09-07
 ```
 
+## DAG 2 — 오픈마켓 주문 수집
+
+오픈마켓 주문을 **HTTP API로** 수집합니다. 재현성을 위해 외부 API 대신 compose의
+`mock-openmarket`(fakestore 형태 목업 서버)을 띄우고, DAG는 여기에 실제 `requests` 호출을 합니다.
+`fetch → transform_to_staging → quality_check`.
+
+```shell
+docker compose up -d   # mock-openmarket 포함해 함께 기동
+docker compose exec airflow-scheduler airflow dags test openmarket_orders_ingest 2026-09-01
+# → data/staging/openmarket/order_date=2026-09-01/orders.parquet
+```
+
 BigQuery 적재는 별도 DAG로 이어집니다(계획 9~10일차).
 
 ## 검증
@@ -84,8 +96,12 @@ docker compose config        # compose 문법 확인
 ├── src/ecommerce_etl/    # 수집·정제 코어 로직 (Airflow 무관, 순수 파이썬)
 │   ├── schema.py         # 통합 18컬럼 정의 (단일 출처)
 │   ├── quality.py        # 데이터 품질 검사 Q1~Q7
-│   └── pg/               # PG 소스: generate(합성) · transform(통합 매핑)
+│   ├── staging.py        # staging parquet 쓰기 (소스 공용)
+│   ├── catalog.py        # 상품 카탈로그 (소스 공용)
+│   ├── pg/               # PG 소스: generate(합성) · transform(통합 매핑)
+│   └── openmarket/       # 오픈마켓 소스: client(HTTP) · transform
 ├── dags/                 # Airflow DAG (컨테이너에 바인드 마운트)
+├── mock/                 # 로컬 목업 오픈마켓 API (compose 서비스로 실행)
 ├── scripts/              # 로컬 편의 스크립트 (합성 데이터 생성 등)
 ├── data/                 # raw/·staging/ 데이터 (git 제외, 컨테이너에 마운트)
 ├── docs/SCHEMA.md        # 통합 주문 스키마 설계 + DDL

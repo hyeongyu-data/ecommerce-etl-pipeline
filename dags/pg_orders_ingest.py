@@ -19,7 +19,7 @@ import pendulum
 from airflow.decorators import dag, task
 from airflow.operators.python import get_current_context
 
-from ecommerce_etl import quality
+from ecommerce_etl import quality, staging
 from ecommerce_etl.pg import generate, transform
 
 DATA_DIR = Path(os.environ.get("ETL_DATA_DIR", "/opt/airflow/data"))
@@ -50,7 +50,7 @@ def pg_orders_ingest():
     @task
     def transform_to_staging(raw_csv: str) -> str:
         df = transform.transform(raw_csv)
-        return str(transform.write_staging(df, STAGING_DIR, _order_date()))
+        return str(staging.write_parquet(df, STAGING_DIR, _order_date()))
 
     @task
     def quality_check(staging_parquet: str) -> None:

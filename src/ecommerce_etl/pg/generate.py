@@ -11,21 +11,9 @@ import random
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-KST = timezone(timedelta(hours=9))
+from ecommerce_etl.catalog import CATALOG
 
-# (product_id, product_name, unit_price KRW). 금액은 KRW 정수(docs/SCHEMA.md §4-3).
-_CATALOG: tuple[tuple[str, str, int], ...] = (
-    ("P001", "무선 이어폰", 89000),
-    ("P002", "보조배터리 10000mAh", 24900),
-    ("P003", "USB-C 케이블 2m", 8900),
-    ("P004", "스마트워치 밴드", 15900),
-    ("P005", "블루투스 스피커", 43000),
-    ("P006", "노트북 파우치 15인치", 27000),
-    ("P007", "기계식 키보드", 119000),
-    ("P008", "무선 마우스", 32000),
-    ("P009", "모니터 받침대", 21000),
-    ("P010", "웹캠 1080p", 54000),
-)
+KST = timezone(timedelta(hours=9))
 
 RAW_COLUMNS: tuple[str, ...] = (
     "order_id",
@@ -49,16 +37,16 @@ def generate_rows(order_date: date, *, seed: int = 42) -> list[dict[str, object]
         customer_id = f"C{rng.randint(1, 500):04d}"
         ordered_at = (midnight + timedelta(seconds=rng.randint(0, 86399))).isoformat()
         for _ in range(rng.randint(1, 3)):
-            product_id, product_name, unit_price = rng.choice(_CATALOG)
+            product = rng.choice(CATALOG)
             rows.append(
                 {
                     "order_id": order_id,
                     "customer_id": customer_id,
                     "ordered_at": ordered_at,
-                    "product_id": product_id,
-                    "product_name": product_name,
+                    "product_id": product.product_id,
+                    "product_name": product.name,
                     "quantity": rng.randint(1, 5),
-                    "unit_price": unit_price,
+                    "unit_price": product.unit_price,
                 }
             )
     return rows
