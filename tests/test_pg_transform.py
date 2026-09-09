@@ -6,7 +6,7 @@ from datetime import date
 import pandas as pd
 import pytest
 
-from ecommerce_etl import schema
+from ecommerce_etl import schema, staging
 from ecommerce_etl.pg import generate, transform
 
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
@@ -54,7 +54,7 @@ def test_order_date_is_kst_date(df):
 
 
 def test_roundtrip_parquet(df, tmp_path):
-    path = transform.write_staging(df, tmp_path / "staging", date(2026, 9, 1))
+    path = staging.write_parquet(df, tmp_path / "staging", date(2026, 9, 1))
     back = pd.read_parquet(path)
     assert list(back.columns) == list(schema.UNIFIED_COLUMNS)
     assert len(back) == len(df)
