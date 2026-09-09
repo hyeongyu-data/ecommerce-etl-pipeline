@@ -56,6 +56,13 @@ jobs:
             exit 0
           fi
 
+          case "${PR_NUMBER:-}" in
+            "" | *[!0-9]*)
+              echo "PR 번호가 유효하지 않습니다 (${PR_NUMBER:-없음}) — 건너뜁니다."
+              exit 0
+              ;;
+          esac
+
           DIFF="$(gh pr diff "$PR_NUMBER" --repo "$REPO" || true)"
           if [ -z "$DIFF" ]; then
             echo "빈 diff — 건너뜁니다."
@@ -64,7 +71,9 @@ jobs:
 
           NOTE=""
           if [ "${#DIFF}" -gt 60000 ]; then
-            DIFF="$(printf '%s' "$DIFF" | head -c 60000)"
+            # 바이트 절단이 UTF-8 문자 중간을 자를 수 있어 깨진 시퀀스를 제거한다
+            # (iconv는 잘린 끝문자에 대해 exit 1을 내므로 || true 로 무시한다).
+            DIFF="$(printf '%s' "$DIFF" | head -c 60000 | iconv -f UTF-8 -t UTF-8 -c || true)"
             NOTE=$'\n\n(diff가 커서 앞부분 60KB만 검토했습니다.)'
           fi
 
