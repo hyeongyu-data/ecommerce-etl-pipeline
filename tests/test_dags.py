@@ -32,3 +32,15 @@ def test_pg_dag_structure(dagbag):
     assert set(dag.get_task("transform_to_staging").upstream_task_ids) == {"generate_raw"}
     assert set(dag.get_task("quality_check").upstream_task_ids) == {"transform_to_staging"}
     assert dag.catchup is False
+
+
+def test_openmarket_dag_structure(dagbag):
+    dag = dagbag.dags["openmarket_orders_ingest"]
+    assert {t.task_id for t in dag.tasks} == {
+        "fetch",
+        "transform_to_staging",
+        "quality_check",
+    }
+    assert set(dag.get_task("transform_to_staging").upstream_task_ids) == {"fetch"}
+    assert set(dag.get_task("quality_check").upstream_task_ids) == {"transform_to_staging"}
+    assert dag.catchup is False

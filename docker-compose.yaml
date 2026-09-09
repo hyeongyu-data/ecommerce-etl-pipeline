@@ -3,9 +3,9 @@
 # 웹 UI: http://localhost:8080  (airflow / airflow)
 # 정리:  docker compose down -v
 #
-# 강의용 airflow-local 대비 단순화: LocalExecutor 채택으로 Celery/Redis 제거,
-# 이 프로젝트에 불필요한 MySQL/FastAPI 제거. dags 만 호스트 바인드, logs/plugins 는
-# 명명 볼륨이라 호스트에 디렉터리를 만들 필요가 없다.
+# 강의용 airflow-local 대비 단순화: LocalExecutor 채택으로 Celery/Redis 제거, MySQL 제거.
+# dags·data·mock 만 호스트 바인드, logs/plugins 는 명명 볼륨.
+# mock-openmarket: DAG 2가 호출하는 오픈마켓 API 목업(외부 의존 없이 HTTP 수집 시연).
 
 name: ecommerce-etl-pipeline
 
@@ -27,6 +27,8 @@ x-airflow-common: &airflow-common
     AIRFLOW__WEBSERVER__DEFAULT_UI_TIMEZONE: Asia/Seoul
     ETL_DATA_DIR: ${ETL_DATA_DIR:-/opt/airflow/data}
     PG_QUALITY_MAX_VIOLATION_RATE: ${PG_QUALITY_MAX_VIOLATION_RATE:-0.01}
+    OPENMARKET_API_BASE_URL: ${OPENMARKET_API_BASE_URL:-http://mock-openmarket:8000}
+    OPENMARKET_QUALITY_MAX_VIOLATION_RATE: ${OPENMARKET_QUALITY_MAX_VIOLATION_RATE:-0.01}
   volumes:
     - ./dags:/opt/airflow/dags
     - ./data:/opt/airflow/data
@@ -35,6 +37,28 @@ x-airflow-common: &airflow-common
   user: "${AIRFLOW_UID:-50000}:0"
 
 services:
+  # 오픈마켓(fakestore 형태) API 목업. DAG 2가 실제 HTTP로 호출한다.
+  mock-openmarket:
+    image: python:3.12-slim
+    working_dir: /app
+    command: python mock/openmarket_server.py --host 0.0.0.0 --port 8000
+    environment:
+      PYTHONPATH: /app/src
+    volumes:
+      - ./mock:/app/mock:ro
+      - ./src:/app/src:ro
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/products').status == 200 else 1)"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: always
+
   postgres:
     image: postgres:13
     environment:
@@ -84,6 +108,8 @@ services:
         condition: service_healthy
       airflow-init:
         condition: service_completed_successfully
+      mock-openmarket:
+        condition: service_healthy
 
   airflow-scheduler:
     <<: *airflow-common
@@ -100,6 +126,8 @@ services:
         condition: service_healthy
       airflow-init:
         condition: service_completed_successfully
+      mock-openmarket:
+        condition: service_healthy
 
 volumes:
   postgres-db:
