@@ -76,7 +76,7 @@ jobs:
           NOTE=""
           if [ "${#DIFF}" -gt "$LIMIT" ]; then
             DIFF="$(printf '%s' "$DIFF" | head -c "$LIMIT" | iconv -f UTF-8 -t UTF-8 -c || true)"
-            NOTE=$'\n\n(무료 모델 토큰 한도로 diff 앞부분만 검토했습니다. 전체 리뷰는 사람이 확인하십시오.)'
+            NOTE=$'\n\n(무료 모델 토큰 한도로 diff 앞 14KB만 검토했습니다. 전체 리뷰는 사람이 확인하십시오.)'
           fi
 
           SYSTEM_PROMPT='당신은 이 저장소의 코드 리뷰어입니다. 한국어 격식체로 작성합니다.
