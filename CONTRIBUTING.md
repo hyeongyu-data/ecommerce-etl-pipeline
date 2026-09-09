@@ -50,6 +50,10 @@ git config commit.template .gitmessage
 2. Draft로 열어 모든 diff를 셀프 리뷰한 뒤 Ready로 전환.
 3. CI(`lint-test`) 통과 + 리뷰 승인 + 모든 대화 resolved 후 **squash merge**.
 
+PR을 열거나 Ready로 전환하면 무료 Groq가 리뷰 요약 코멘트를 자동으로 답니다
+(`GROQ_API_KEY` 시크릿 필요, 없으면 skip — 자세한 내용은 [README](README.md#ai-리뷰)).
+필수 체크는 아니며, 재리뷰는 `/ai-review` 코멘트로 실행합니다.
+
 ## 코드 스타일
 
 `pre-commit install` 후 커밋 시 기본 훅(공백/개행/YAML/JSON/시크릿)과 `ruff`

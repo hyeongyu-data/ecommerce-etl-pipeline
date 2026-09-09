@@ -16,6 +16,7 @@ REQUIRED_FILES = [
     "docker-compose.yaml",
     "dags/.gitkeep",
     ".github/workflows/ci.yml",
+    ".github/workflows/ai-review.yml",
 ]
 
 # SCHEMA.md 통합 스키마 표 / DDL에 반드시 있어야 하는 컬럼
@@ -74,6 +75,16 @@ def test_dockerfile_extends_official_airflow():
     assert "FROM apache/airflow:" in text
     assert "pyproject.toml" in text
     assert "pip install" in text
+
+
+def test_ai_review_workflow_is_non_blocking_and_guarded():
+    """AI 리뷰 워크플로: 필수 아님·시크릿 없으면 skip·문서 전용 PR 제외."""
+    text = (ROOT / ".github/workflows/ai-review.yml").read_text(encoding="utf-8")
+    assert "GROQ_API_KEY" in text
+    assert "paths-ignore" in text  # 문서 전용 PR 제외
+    assert "/ai-review" in text  # 코멘트 재실행
+    # 키가 없을 때 exit 0(머지 차단 안 함) 경로가 있어야 한다
+    assert "시크릿이 없어" in text and "exit 0" in text
 
 
 def test_pyproject_declares_dev_tools():
