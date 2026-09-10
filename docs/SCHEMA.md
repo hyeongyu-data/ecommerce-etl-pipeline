@@ -100,25 +100,49 @@ OPTIONS(description="3개 이종 소스(PG/오픈마켓/GA4)를 라인 단위로
 | `channel` | (상수 `openmarket`) | 실데이터면 네이버/쿠팡 구분 |
 | `event_name` | (상수 `order`) | |
 
-### 2-3. GA4 이벤트 — `ga4` (GA4 Data API, `purchase` 이벤트)
+### 2-3. GA4 구매 보고서 — `ga4` (현재는 목업)
+
+현재 구현은 단일 날짜의 **GA4 보고서 형태 합성 JSON**입니다. 실제 Data API를 호출하거나
+이 필드 조합의 호환성을 실제 속성에서 검증한 것은 아닙니다. 목업 계약은 메타데이터
+`timeZone=Asia/Seoul`, `currencyCode=KRW`와 전체 행 목록·정수 `rowCount` 일치를 요구합니다.
+빈 보고서도 `rows=[]`, `rowCount=0`을 명시합니다. 실제 API 응답의 선택 필드·페이지 처리 계약은
+향후 클라이언트에서 별도로 다룹니다.
 
 | 통합 컬럼 | 원천 디멘션/메트릭 | 비고 |
 |---|---|---|
-| `source_order_id` | `transactionId` | |
-| `line_no` | 행 내 item 순번 | Data API는 item 단위 행 |
-| `ordered_at` | `date` + `hour` | 분 이하 시각은 소실(집계 API 한계) |
-| `customer_id` | (NULL) | GA4 Data API는 개인 식별자 미제공 |
-| `product_id` | `itemId` | |
-| `product_name` | `itemName` | |
-| `quantity` | `itemsPurchased` | |
-| `unit_price` | `itemRevenue / itemsPurchased` | 역산 |
-| `line_amount` | `itemRevenue` | |
-| `channel` | `sessionDefaultChannelGroup` | |
-| `event_name` | `eventName` | `purchase` |
+| `source_order_id` | `transactionId` | 빈 값·`(not set)` 거부 |
+| `line_no` | 거래별 `itemId` 정렬 후 순번 | 1부터, 원본 items 배열 순번 아님 |
+| `ordered_at` | `dateHour` | KST `YYYYMMDDHH`를 UTC로 변환 |
+| `order_date` | `dateHour`의 KST 날짜 | DAG 대상일과 일치해야 함 |
+| `customer_id` | (NULL) | 목업에 개인 식별자 없음 |
+| `product_id` | `itemId` | 거래 내 중복 상품 거부 |
+| `product_name` | `itemName` | 빈 문자열은 NULL |
+| `quantity` | `itemsPurchased` | 양의 Int64 정수 |
+| `unit_price` | `itemRevenue / itemsPurchased` | 정수로 나누어떨어져야 함 |
+| `line_amount` | `itemRevenue` | 0 이상의 Int64 정수 KRW |
+| `currency` | `currencyCode` | KRW만 허용 |
+| `channel` | (NULL) | 현재 목업에서 채널 미수집 |
+| `event_name` | `eventName` | purchase만 허용 |
+| `source_file` | 원천 보고서 경로 | 날짜별 raw 보고서 추적 |
+
+헤더 이름으로 값을 매핑하므로 헤더·행 순서가 바뀌어도 결과는 같습니다. 동일 거래의 모든 행은
+같은 시각이어야 합니다. 상품 집합이 바뀌면 정렬 순번도 달라질 수 있으므로 향후 BigQuery 적재에서
+소스·날짜 단위 교체 등 별도 멱등 계약을 정의해야 합니다. 단순 append는 허용할 수 없습니다.
+금액 문자열 `17800.0`처럼 정수와 같은 값은 허용하되 실제 소수 금액·단가를 반올림하거나 잘라내지 않습니다.
+
+시간 단위 정밀도는 이번 요청·목업의 선택입니다. API에는 `dateHourMinute`도 있으므로
+GA4 자체가 시간 단위로만 조회된다고 해석하지 않습니다.
+[공식 필드 정의](https://developers.google.com/analytics/devguides/reporting/data/v1/api-schema)를 참고하세요.
+실제 연동 전에는 선택 필드·필터의
+[호환성](https://developers.google.com/analytics/devguides/reporting/data/v1/rest/v1beta/properties/checkCompatibility)을
+검증하고, 실제 주문과 GA4 이벤트의 중복 집계·환불·지연 갱신을 별도로 설계해야 합니다.
 
 ## 3. 데이터 품질 규칙
 
-적재 전(staging) 검증한다. 위반 행은 격리하고, 위반 비율이 임계치(예: 1%)를 넘으면 DAG를 실패시킨다.
+목표는 적재 전 검증과 위반 행 격리이다. **공통 검사기는 위반 집계·통과 여부만 반환하며 행 격리는
+아직 구현하지 않았다.** PG·오픈마켓은 staging 저장 후 위반율 임계치(기본 1%)를 검사한다.
+GA4는 입력 검증과 아래 Q1~Q7을 **저장 전에** 실행하며 위반 1행이라도 있으면 실패한다.
+이 경우 raw와 이전 staging을 보존한다. 빈 보고서는 위반 없는 0행으로 통과한다.
 
 | # | 규칙 | 목적 |
 |---|---|---|
