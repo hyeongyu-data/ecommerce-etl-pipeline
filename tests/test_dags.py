@@ -54,7 +54,7 @@ def test_ga4_dag_structure(dagbag):
     assert dag.max_active_runs == 1
 
 
-def test_bigquery_load_dag_structure(dagbag):
+def test_warehouse_load_dag_structure(dagbag):
     dag = dagbag.dags["warehouse_orders_load"]
     assert {t.task_id for t in dag.tasks} == {"load_partition"}
     assert dag.schedule is None

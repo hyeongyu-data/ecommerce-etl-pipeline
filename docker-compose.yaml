@@ -28,9 +28,6 @@ x-airflow-common: &airflow-common
     AIRFLOW__WEBSERVER__BASE_URL: http://localhost:${AIRFLOW_WEB_PORT:-18080}
     ETL_DATA_DIR: ${ETL_DATA_DIR:-/opt/airflow/data}
     PG_QUALITY_MAX_VIOLATION_RATE: ${PG_QUALITY_MAX_VIOLATION_RATE:-0.01}
-    GCP_PROJECT_ID: ${GCP_PROJECT_ID}
-    BQ_DATASET: ${BQ_DATASET:-ecommerce_etl_dev}
-    GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/gcp/application_default_credentials.json
     OPENMARKET_API_BASE_URL: ${OPENMARKET_API_BASE_URL:-http://mock-openmarket:8000}
     OPENMARKET_QUALITY_MAX_VIOLATION_RATE: ${OPENMARKET_QUALITY_MAX_VIOLATION_RATE:-0.01}
   volumes:
