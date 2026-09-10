@@ -7,6 +7,7 @@
 from datetime import date
 
 import pandas as pd
+import pytest
 from run_e2e import duckdb_stats
 
 from ecommerce_etl.duckdb import replace_date
@@ -61,3 +62,8 @@ def test_duckdb_stats_counts_sources_dups_and_partitions(tmp_path):
     again = duckdb_stats(db, day1)
     assert again["day_rows"] == 3
     assert again["dups"] == 0
+
+
+def test_duckdb_stats_missing_file_fails_clearly(tmp_path):
+    with pytest.raises(SystemExit, match="적재가 실패"):
+        duckdb_stats(tmp_path / "nope.duckdb", date(2026, 9, 1))

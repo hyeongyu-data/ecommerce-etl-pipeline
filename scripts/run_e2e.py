@@ -8,6 +8,7 @@
     python scripts/run_e2e.py --no-up        # compose up --build 생략 (이미 최신 이미지로 기동)
 
 CI가 아니라 로컬에서 파이프라인 전체를 손으로 확인할 때 쓴다. 무거우므로 CI에는 넣지 않는다.
+실행 후 스택은 계속 떠 있다. 정리는 `docker compose down -v`.
 """
 
 from __future__ import annotations
@@ -19,10 +20,13 @@ from datetime import date
 from pathlib import Path
 
 import duckdb
+import pandas as pd
 
 from ecommerce_etl import schema
 
 ROOT = Path(__file__).resolve().parent.parent
+# 기본 DUCKDB_PATH(warehouse_orders_load.py) + 기본 ./data 바인드 마운트를 가정한다.
+# .env/compose 에서 DUCKDB_PATH 를 바꿨다면 이 경로도 맞춰야 한다.
 DUCKDB_FILE = ROOT / "data" / "warehouse" / "orders.duckdb"
 SOURCE_DAGS = {
     "pg": "pg_orders_ingest",
@@ -53,6 +57,8 @@ def _dag_test(dag_id: str, load_date: date) -> None:
 
 def duckdb_stats(db_path: Path, load_date: date) -> dict:
     """orders_unified 요약: 전체·대상일 행 수, 소스 분포, 중복 order_line_id, 파티션 수."""
+    if not db_path.exists():
+        raise SystemExit(f"FAIL: DuckDB 파일 없음 — 적재가 실패했을 수 있음 ({db_path})")
     con = duckdb.connect(str(db_path), read_only=True)
     try:
         total = con.execute("SELECT count(*) FROM orders_unified").fetchone()[0]
@@ -66,6 +72,7 @@ def duckdb_stats(db_path: Path, load_date: date) -> dict:
                 [load_date],
             ).fetchall()
         )
+        # 2회 이상 나타난 order_line_id 그룹 수(테이블 전체 기준). 멱등 적재면 0이어야 한다.
         dups = con.execute(
             "SELECT count(*) FROM ("
             "  SELECT order_line_id FROM orders_unified GROUP BY order_line_id HAVING count(*) > 1"
@@ -124,12 +131,16 @@ def main() -> int:
         if not staging.exists():
             print(f"FAIL: staging 파일 없음 {staging}")
             return 1
-        print(f"  ok  {staging.relative_to(ROOT)}")
+        print(f"  ok  {source}: {len(pd.read_parquet(staging))}행  {staging.relative_to(ROOT)}")
 
     print("\n=== 2) 통합 적재 1회차 ===")
     _dag_test("warehouse_orders_load", load_date)
     first = duckdb_stats(DUCKDB_FILE, load_date)
     print(f"  {first}")
+    # airflow dags test 의 종료 코드만 믿지 않는다: 적재가 실제로 행을 넣었는지 확인.
+    if first["day_rows"] <= 0 or first["total"] < first["day_rows"]:
+        print(f"FAIL: 1회차 적재 결과가 비정상 {first}")
+        return 1
 
     print("\n=== 3) 통합 적재 2회차 (멱등성) ===")
     _dag_test("warehouse_orders_load", load_date)

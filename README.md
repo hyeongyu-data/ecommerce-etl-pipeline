@@ -148,6 +148,7 @@ docker compose config        # compose 문법 확인
 
 ```shell
 python scripts/run_e2e.py 2026-09-01
+docker compose down -v            # 확인 후 정리 (스택은 자동으로 내려가지 않음)
 ```
 
 검증 결과(2026-09-01, 이미지 재빌드 후):
