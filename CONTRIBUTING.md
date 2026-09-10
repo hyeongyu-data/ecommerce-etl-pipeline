@@ -12,7 +12,7 @@ git config commit.template .gitmessage
 ```
 
 로컬 Airflow는 `cp .env.example .env` 후 `docker compose up -d`
-(웹 UI `http://localhost:8080`, 계정 `airflow`/`airflow`). 정리는 `docker compose down -v`.
+(웹 UI `http://localhost:18080`, 계정 `airflow`/`airflow`). 정리는 `docker compose down -v`.
 `uv` 등 개별 도구 없이 표준 `venv` + `pip` + `docker compose` 만으로 동작해야 합니다.
 
 ## 작업 흐름

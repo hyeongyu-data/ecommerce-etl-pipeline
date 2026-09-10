@@ -1,6 +1,6 @@
 # 로컬 개발용 Airflow. 운영 배포용이 아니다.
 # 기동:  docker compose up -d       (첫 실행은 이미지 빌드로 몇 분 소요)
-# 웹 UI: http://localhost:8080  (airflow / airflow)
+# 웹 UI: http://localhost:18080  (airflow / airflow ; AIRFLOW_WEB_PORT 로 변경 가능)
 # 정리:  docker compose down -v
 #
 # 강의용 airflow-local 대비 단순화: LocalExecutor 채택으로 Celery/Redis 제거, MySQL 제거.
