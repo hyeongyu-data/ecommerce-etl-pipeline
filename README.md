@@ -140,6 +140,25 @@ git diff --check
 docker compose config        # compose 문법 확인
 ```
 
+### 종단간(E2E) 검증
+
+`scripts/run_e2e.py`가 compose 스택을 띄우고 pg·openmarket·ga4 수집 DAG와
+`warehouse_orders_load`를 대상 날짜로 실행합니다. `warehouse_orders_load`는 2회 돌려
+동일 날짜 재실행 시 행이 중복되지 않는지 확인합니다(무거우므로 CI에는 넣지 않습니다).
+
+```shell
+python scripts/run_e2e.py 2026-09-01
+docker compose down -v            # 확인 후 정리 (스택은 자동으로 내려가지 않음)
+```
+
+검증 결과(2026-09-01, 이미지 재빌드 후):
+
+| 단계 | 결과 |
+|---|---|
+| 수집 staging | pg 46행 · openmarket 45행 · ga4 61행 (각 품질검사 위반 0) |
+| `warehouse_orders_load` 1회차 | `orders_unified` 152행 적재 |
+| 2회차(멱등성) | 152행 유지, `order_line_id` 중복 0, `order_date` 파티션 1개 보존 |
+
 ## 저장소 구조
 
 ```
