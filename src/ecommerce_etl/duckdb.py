@@ -17,6 +17,7 @@ def replace_date(db_path: Path, frame: pd.DataFrame, load_date: date) -> int:
     missing = [c for c in UNIFIED_COLUMNS if c not in frame.columns]
     if missing:
         raise ValueError(f"필수 컬럼이 없습니다: {', '.join(missing)}")
+    frame = frame.loc[:, list(UNIFIED_COLUMNS)].copy()
     db_path.parent.mkdir(parents=True, exist_ok=True)
     con = duckdb.connect(str(db_path))
     try:

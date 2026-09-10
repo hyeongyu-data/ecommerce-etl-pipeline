@@ -123,9 +123,9 @@ docker compose config        # compose 문법 확인
 
 로컬 적재는 `ecommerce_etl.duckdb`가 담당합니다. `DUCKDB_PATH`로 파일 위치를 지정하며,
 날짜별 데이터를 트랜잭션으로 교체하므로 재실행해도 중복되지 않습니다.
-적재 DAG는 `bigquery_orders_load`(호환성을 위해 기존 DAG ID 유지)이며, 선행 소스 DAG가 생성한 날짜별 staging
+적재 DAG는 `warehouse_orders_load`이며, 선행 소스 DAG가 생성한 날짜별 staging
 파일을 읽습니다. 수동 검증은 `docker compose exec airflow-scheduler airflow dags test
-bigquery_orders_load 2026-09-01` 명령으로 실행합니다.
+warehouse_orders_load 2026-09-01` 명령으로 실행합니다.
 
 ```
 .
