@@ -24,8 +24,8 @@
 | `product_id` | STRING | N | 원천 상품 식별자 |
 | `product_name` | STRING | Y | 상품명 |
 | `quantity` | INT64 | N | 수량 (> 0) |
-| `unit_price` | NUMERIC | Y | 단가 (>= 0) |
-| `line_amount` | NUMERIC | N | 라인 금액 = `quantity * unit_price` (>= 0) |
+| `unit_price` | INT64 | Y | 단가 (>= 0) |
+| `line_amount` | INT64 | N | 라인 금액 = `quantity * unit_price` (>= 0) |
 | `currency` | STRING | N | 원천 통화. 이 프로젝트는 모든 소스를 `KRW`로 통일(4-3) |
 | `channel` | STRING | Y | 판매 채널(자사몰·네이버·쿠팡 등). 없으면 NULL |
 | `event_name` | STRING | Y | GA4 이벤트명(`purchase` 등). 주문 소스는 `order` 고정 |
@@ -50,8 +50,8 @@ CREATE TABLE IF NOT EXISTS `orders_unified`
   product_id      STRING    NOT NULL,
   product_name    STRING,
   quantity        INT64     NOT NULL OPTIONS(description="수량 > 0"),
-  unit_price      NUMERIC            OPTIONS(description="단가 >= 0"),
-  line_amount     NUMERIC   NOT NULL OPTIONS(description="quantity * unit_price >= 0"),
+  unit_price      INT64              OPTIONS(description="단가 >= 0"),
+  line_amount     INT64     NOT NULL OPTIONS(description="quantity * unit_price >= 0"),
   currency        STRING    NOT NULL OPTIONS(description="원천 통화. 이 프로젝트는 KRW로 통일"),
   channel         STRING             OPTIONS(description="판매 채널. 없으면 NULL"),
   event_name      STRING             OPTIONS(description="GA4 이벤트명. 주문 소스는 'order'"),

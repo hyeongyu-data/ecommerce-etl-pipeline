@@ -7,14 +7,17 @@ from datetime import date
 
 import pandas as pd
 from google.cloud import bigquery
+from google.cloud.exceptions import NotFound
 
-from .schema import UNIFIED_COLUMNS
+from .schema import NULLABLE, UNIFIED_COLUMNS
 
-_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_PROJECT_IDENTIFIER = re.compile(r"^[a-z][a-z0-9-]{4,28}[a-z0-9]$")
+_RESOURCE_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
-def _validate_identifier(value: str, name: str) -> str:
-    if not _IDENTIFIER.fullmatch(value):
+def _validate_identifier(value: str, name: str, *, project: bool = False) -> str:
+    pattern = _PROJECT_IDENTIFIER if project else _RESOURCE_IDENTIFIER
+    if not pattern.fullmatch(value):
         raise ValueError(f"{name} 식별자가 올바르지 않습니다: {value!r}")
     return value
 
@@ -42,19 +45,22 @@ def table_schema() -> list[bigquery.SchemaField]:
         "ingested_at": "TIMESTAMP",
     }
     return [
-        bigquery.SchemaField(column, types[column], mode="NULLABLE") for column in UNIFIED_COLUMNS
+        bigquery.SchemaField(
+            column, types[column], mode="NULLABLE" if column in NULLABLE else "REQUIRED"
+        )
+        for column in UNIFIED_COLUMNS
     ]
 
 
 def ensure_table(client: bigquery.Client, project: str, dataset: str, table: str) -> str:
     """없으면 날짜 파티션·source 클러스터 테이블을 만든다."""
-    project = _validate_identifier(project, "프로젝트")
+    project = _validate_identifier(project, "프로젝트", project=True)
     dataset = _validate_identifier(dataset, "데이터셋")
     table = _validate_identifier(table, "테이블")
     table_id = f"{project}.{dataset}.{table}"
     try:
         client.get_table(table_id)
-    except bigquery.NotFound:
+    except NotFound:
         definition = bigquery.Table(table_id, schema=table_schema())
         definition.time_partitioning = bigquery.TimePartitioning(field="order_date")
         definition.clustering_fields = ["source"]
@@ -63,7 +69,7 @@ def ensure_table(client: bigquery.Client, project: str, dataset: str, table: str
 
 
 def replace_date(client: bigquery.Client, frame: pd.DataFrame, target: str, load_date: date) -> int:
-    """임시 테이블을 검증한 뒤 해당 날짜 파티션을 원자적으로 교체한다."""
+    """임시 테이블 적재 후 해당 날짜 파티션을 원자적으로 교체한다."""
     if frame.empty:
         return 0
     missing = [column for column in UNIFIED_COLUMNS if column not in frame.columns]
