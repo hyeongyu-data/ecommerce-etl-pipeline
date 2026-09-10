@@ -50,9 +50,7 @@ git config commit.template .gitmessage
 2. Draft로 열어 모든 diff를 셀프 리뷰한 뒤 Ready로 전환.
 3. CI(`lint-test`) 통과 + 리뷰 승인 + 모든 대화 resolved 후 **squash merge**.
 
-PR을 열거나 Ready로 전환하면 Claude가 리뷰 요약 + "이해도 확인" inline 코멘트를 자동으로 답니다
-(`GUDOKPIN_API_KEY` 시크릿 필요, 없으면 skip — 자세한 내용은 [README](README.md#ai-리뷰)).
-필수 체크는 아니며, 재리뷰는 `/ai-review` 코멘트로 실행합니다.
+PR 리뷰는 저장소에 등록된 사람 리뷰어가 수행합니다. 자동 AI 리뷰 워크플로는 사용하지 않습니다.
 
 ## 코드 스타일
 

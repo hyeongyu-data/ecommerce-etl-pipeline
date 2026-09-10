@@ -142,21 +142,10 @@ docker compose config        # compose 문법 확인
 ├── pyproject.toml        # 메타데이터 · 런타임/개발 의존성 · ruff/pytest 설정
 ├── README.md  LICENSE  CONTRIBUTING.md
 ├── CLAUDE.md             # AI 코딩 에이전트 진입점 (AGENTS.md·.agents는 symlink)
-├── .github/              # 이슈·PR 템플릿, CI, AI 리뷰, dependabot, branch_ruleset_main.json
+├── .github/              # 이슈·PR 템플릿, CI, dependabot, branch_ruleset_main.json
 ├── .claude/docs/         # AI 에이전트 참고 문서 (워크플로/리뷰/보안/금지)
 └── (dotfiles)            # .gitignore .editorconfig .python-version .pre-commit-config.yaml …
 ```
-
-## AI 리뷰
-
-PR을 열거나 Ready로 전환하면 Anthropic Claude(`anthropics/claude-code-action`, 모델은
-`.github/workflows/ai-review.yml`의 `CLAUDE_MODEL`)가 자동으로 리뷰합니다 — 심각도 순 요약
-코멘트 + diff 라인에 "이해도 확인:" inline 질문. 필수 체크가 아니며, 재리뷰는 PR 대화에
-`/ai-review` 코멘트를 남깁니다. 문서 전용 PR은 자동 실행되지 않습니다.
-
-활성화하려면 [Anthropic Console](https://console.anthropic.com/settings/keys)에서 API 키를
-발급받아 저장소 `Settings > Secrets and variables > Actions`에 `GUDOKPIN_API_KEY`로 등록합니다.
-키가 없으면 워크플로는 조용히 건너뜁니다.
 
 ## 기여
 

@@ -15,7 +15,6 @@ REQUIRED_FILES = [
     "docker-compose.yaml",
     "dags/.gitkeep",
     ".github/workflows/ci.yml",
-    ".github/workflows/ai-review.yml",
 ]
 
 
@@ -53,15 +52,9 @@ def test_dockerfile_extends_official_airflow():
     assert "pip install" in text
 
 
-def test_ai_review_workflow_is_non_blocking_and_guarded():
-    """AI 리뷰 워크플로: 필수 아님·시크릿 없으면 skip·문서 전용 PR 제외."""
-    text = (ROOT / ".github/workflows/ai-review.yml").read_text(encoding="utf-8")
-    assert "GUDOKPIN_API_KEY" in text
-    assert "paths-ignore" in text  # 문서 전용 PR 제외
-    assert "/ai-review" in text  # 코멘트 재실행
-    # 키가 없으면 guard 스텝이 ok=false 를 내고 이후 스텝이 실행되지 않는다
-    assert "시크릿이 없어" in text
-    assert "steps.guard.outputs.ok == 'true'" in text
+def test_ai_review_workflow_is_removed():
+    """자동 AI 리뷰 워크플로를 사용하지 않는다."""
+    assert not (ROOT / ".github/workflows/ai-review.yml").exists()
 
 
 def test_pyproject_declares_deps():
