@@ -12,10 +12,12 @@ from airflow.decorators import dag, task
 from airflow.operators.python import get_current_context
 from google.cloud import bigquery
 
+from ecommerce_etl import schema
 from ecommerce_etl.bigquery import ensure_table, replace_date
+from ecommerce_etl.quality import check
 
 DATA_DIR = Path(os.environ.get("ETL_DATA_DIR", "/opt/airflow/data"))
-PROJECT = os.environ.get("GCP_PROJECT_ID", "ecommerce-etl-pipeline-508205")
+PROJECT = os.environ.get("GCP_PROJECT_ID")
 DATASET = os.environ.get("BQ_DATASET", "ecommerce_etl_dev")
 TABLE = os.environ.get("BQ_TABLE", "orders_unified")
 
@@ -38,7 +40,7 @@ def bigquery_orders_load():
     def load_partition() -> int:
         load_date = _order_date()
         frames = []
-        for source in ("pg", "openmarket", "ga4"):
+        for source in schema.SOURCES:
             path = (
                 DATA_DIR
                 / "staging"
@@ -50,9 +52,15 @@ def bigquery_orders_load():
                 frames.append(pd.read_parquet(path))
         if not frames:
             raise FileNotFoundError(f"staging 파일이 없습니다: {load_date}")
+        combined = pd.concat(frames, ignore_index=True)
+        result = check(combined)
+        if not result.passed:
+            raise ValueError(f"통합 품질검사 실패: {result.violations}")
+        if not PROJECT:
+            raise RuntimeError("GCP_PROJECT_ID 환경 변수가 필요합니다")
         client = bigquery.Client(project=PROJECT)
         target = ensure_table(client, PROJECT, DATASET, TABLE)
-        return replace_date(client, pd.concat(frames, ignore_index=True), target, load_date)
+        return replace_date(client, combined, target, load_date)
 
     load_partition()
 

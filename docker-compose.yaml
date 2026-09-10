@@ -27,11 +27,15 @@ x-airflow-common: &airflow-common
     AIRFLOW__WEBSERVER__DEFAULT_UI_TIMEZONE: Asia/Seoul
     ETL_DATA_DIR: ${ETL_DATA_DIR:-/opt/airflow/data}
     PG_QUALITY_MAX_VIOLATION_RATE: ${PG_QUALITY_MAX_VIOLATION_RATE:-0.01}
+    GCP_PROJECT_ID: ${GCP_PROJECT_ID}
+    BQ_DATASET: ${BQ_DATASET:-ecommerce_etl_dev}
+    GOOGLE_APPLICATION_CREDENTIALS: /opt/airflow/gcp/application_default_credentials.json
     OPENMARKET_API_BASE_URL: ${OPENMARKET_API_BASE_URL:-http://mock-openmarket:8000}
     OPENMARKET_QUALITY_MAX_VIOLATION_RATE: ${OPENMARKET_QUALITY_MAX_VIOLATION_RATE:-0.01}
   volumes:
     - ./dags:/opt/airflow/dags
     - ./data:/opt/airflow/data
+    - ${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:/opt/airflow/gcp/application_default_credentials.json:ro
     - airflow-logs:/opt/airflow/logs
     - airflow-plugins:/opt/airflow/plugins
   user: "${AIRFLOW_UID:-50000}:0"

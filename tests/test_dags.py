@@ -52,3 +52,11 @@ def test_ga4_dag_structure(dagbag):
     assert set(dag.get_task("validate_and_stage").upstream_task_ids) == {"generate_raw"}
     assert dag.catchup is False
     assert dag.max_active_runs == 1
+
+
+def test_bigquery_load_dag_structure(dagbag):
+    dag = dagbag.dags["bigquery_orders_load"]
+    assert {t.task_id for t in dag.tasks} == {"load_partition"}
+    assert dag.schedule is None
+    assert dag.catchup is False
+    assert dag.max_active_runs == 1
