@@ -1,7 +1,8 @@
 # ecommerce-etl-pipeline
 
-> 이종 데이터소스(PG 주문·오픈마켓 주문·GA4 이벤트)를 Airflow로 수집·정제해 BigQuery에 통합
-> 적재하고 대시보드로 보여주는 미니 ETL 파이프라인.
+> 이종 데이터소스(PG 주문·오픈마켓 주문·GA4 이벤트)를 Airflow로 수집·정제해 통합 주문 테이블로
+> 적재하는 미니 ETL 파이프라인. 설계 목표 웨어하우스는 BigQuery이고, 로컬에서는 결제 계정 없이
+> 돌리기 위해 같은 스키마의 DuckDB로 적재합니다.
 
 <!-- ![CI](https://github.com/hyeongyu-data/ecommerce-etl-pipeline/actions/workflows/ci.yml/badge.svg) -->
 
@@ -15,17 +16,20 @@
 
 ```
 [PG 주문 CSV]  ─┐
-[오픈마켓 API] ─┼─▶ Airflow DAG (수집)  ─▶  staging  ─▶  정제·통합  ─▶  BigQuery  ─▶  대시보드
-[GA4 이벤트]   ─┘        (소스별 1개)                  (통합 스키마)   orders_unified   (Streamlit)
+[오픈마켓 API] ─┼─▶ Airflow DAG (수집)  ─▶  staging  ─▶  통합 적재  ─▶  orders_unified  ─▶  대시보드
+[GA4 이벤트]   ─┘        (소스별 1개)      (parquet)   (품질검사 후)   DuckDB (로컬)      (후속)
 ```
 
 - **수집**: 소스마다 DAG 1개. PG는 날짜 파티션 CSV를 일별 배치처럼 읽고, 오픈마켓은 목업 API를
   호출하며, GA4는 현재 보고서 형태의 목업 JSON을 생성합니다(실제 Data API 연동은 후속 범위).
 - **정제·통합**: 소스별 원본 필드를 [`docs/SCHEMA.md`](docs/SCHEMA.md)의 통합 주문 스키마로 매핑합니다.
-- **적재**: BigQuery `orders_unified`(날짜 파티션 + `source` 클러스터). 적재 전 품질 체크.
-- **대시보드**: 소스별 주문 수·매출 추이(대안: Looker Studio).
+- **적재**: `warehouse_orders_load` DAG가 세 소스 staging을 합쳐 공통 품질검사 후 `orders_unified`
+  테이블의 해당 날짜를 트랜잭션으로 교체합니다. 로컬 웨어하우스는 DuckDB(`DUCKDB_PATH`), 설계
+  목표는 BigQuery(날짜 파티션 + `source` 클러스터) — 스키마·멱등 계약은 동일합니다.
+- **대시보드**: 소스별 주문 수·매출 추이(후속 범위).
 
-설계 판단 근거(왜 BigQuery인지, 왜 이 스키마인지)와 DDL 초안은 [`docs/SCHEMA.md`](docs/SCHEMA.md)에 있습니다.
+통합 스키마·DDL·설계 판단 근거(왜 이 스키마인지, 왜 BigQuery를 목표로 잡았는지)는
+[`docs/SCHEMA.md`](docs/SCHEMA.md)에 있습니다.
 
 ## 빠른 시작
 
@@ -41,7 +45,7 @@ git config commit.template .gitmessage
 # 2) 로컬 Airflow 기동
 cp .env.example .env                                 # Linux는 .env에 AIRFLOW_UID=$(id -u) 설정
 docker compose up -d                                 # 첫 실행은 이미지 빌드로 수 분
-# → http://localhost:8080  (airflow / airflow)
+# → http://localhost:18080  (airflow / airflow ; AIRFLOW_WEB_PORT로 변경 가능)
 
 docker compose down -v                               # 정리
 ```
@@ -60,7 +64,7 @@ DAG는 `dags/`에 두면 컨테이너에 자동 반영됩니다(단, DAG가 impo
 docker compose exec airflow-scheduler airflow dags test pg_orders_ingest 2026-09-01
 # → data/staging/pg/order_date=2026-09-01/orders.parquet
 
-# 또는 Airflow UI(localhost:8080)에서 pg_orders_ingest 트리거
+# 또는 Airflow UI(localhost:18080)에서 pg_orders_ingest 트리거
 
 # 로컬에서 원천만 미리 생성해 눈으로 확인
 python scripts/gen_pg_orders.py --start 2026-09-01 --end 2026-09-07
@@ -77,8 +81,6 @@ docker compose up -d   # mock-openmarket 포함해 함께 기동
 docker compose exec airflow-scheduler airflow dags test openmarket_orders_ingest 2026-09-01
 # → data/staging/openmarket/order_date=2026-09-01/orders.parquet
 ```
-
-BigQuery 적재는 별도 DAG로 이어집니다(계획 9~10일차).
 
 ## DAG 3 — GA4 목업 구매 보고서
 
@@ -110,6 +112,25 @@ docker compose exec airflow-scheduler airflow dags test ga4_events_ingest 2026-0
 - 실제 GA4 속성의 필드 조합 호환성, 인증, 페이지 처리, 보고서 집계·지연 도착 처리는 후속 작업입니다.
   합성 소스별 주문을 실제 결제와 GA4 구매 이벤트의 중복 제거가 끝난 매출로 해석하지 않습니다.
 
+## 통합 적재 — warehouse_orders_load
+
+세 소스(`pg`·`openmarket`·`ga4`)의 그날 staging parquet을 합쳐 공통 품질검사(Q1~Q7, union 기준)를
+통과한 뒤 웨어하우스 `orders_unified` 테이블의 해당 날짜를 **트랜잭션으로 교체**합니다. 같은 날짜를
+다시 실행해도 행이 중복되지 않고, 다른 날짜 파티션은 보존됩니다.
+
+- **로컬 웨어하우스**: DuckDB. 파일 경로는 `DUCKDB_PATH`(컨테이너 기본
+  `/opt/airflow/data/warehouse/orders.duckdb` — 호스트 `data/` 아래라 재기동해도 유지).
+  구현은 `ecommerce_etl.duckdb`.
+- **설계 목표**: BigQuery(`${GCP_PROJECT_ID}.${BQ_DATASET}.orders_unified`, 날짜 파티션 + `source`
+  클러스터). 18컬럼 스키마와 날짜 단위 멱등 교체 계약은 두 백엔드가 동일합니다. 전환 근거는
+  [`docs/SCHEMA.md` §4-1](docs/SCHEMA.md#4-1-왜-bigquery인가-설계-목표-로컬은-왜-duckdb인가).
+
+```shell
+# 선행: pg/openmarket/ga4 DAG로 해당 날짜 staging을 먼저 만든 뒤
+docker compose exec airflow-scheduler airflow dags test warehouse_orders_load 2026-09-01
+# → DuckDB orders_unified 테이블의 order_date=2026-09-01 파티션 교체
+```
+
 ## 검증
 
 ```shell
@@ -120,12 +141,6 @@ docker compose config        # compose 문법 확인
 ```
 
 ## 저장소 구조
-
-로컬 적재는 `ecommerce_etl.duckdb`가 담당합니다. `DUCKDB_PATH`로 파일 위치를 지정하며,
-날짜별 데이터를 트랜잭션으로 교체하므로 재실행해도 중복되지 않습니다.
-적재 DAG는 `warehouse_orders_load`이며, 선행 소스 DAG가 생성한 날짜별 staging
-파일을 읽습니다. 수동 검증은 `docker compose exec airflow-scheduler airflow dags test
-warehouse_orders_load 2026-09-01` 명령으로 실행합니다.
 
 ```
 .

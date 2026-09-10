@@ -38,7 +38,8 @@ symlink입니다.
 ## 프로젝트 맥락
 
 - 이종 데이터소스(PG 주문 CSV·오픈마켓 주문 API·GA4 이벤트)를 Airflow로 수집·정제해
-  BigQuery에 통합 적재하고 대시보드로 보여주는 미니 ETL 파이프라인.
+  통합 주문 테이블(`orders_unified`)로 적재하는 미니 ETL 파이프라인. 로컬 웨어하우스는
+  DuckDB, 설계 목표 웨어하우스는 BigQuery이며 스키마·멱등 계약은 동일. 대시보드는 후속 범위.
 - Python 3.12. 수집·정제 코어 로직은 `src/ecommerce_etl/`(Airflow 무관), DAG는 `dags/`(얇게
   wiring만), 로컬 스크립트는 `scripts/`, 데이터는 `data/`(git 제외). 통합 스키마 컬럼 정의의
   단일 출처는 `src/ecommerce_etl/schema.py`이고 `docs/SCHEMA.md`가 설계·근거. 테스트는 `tests/`.

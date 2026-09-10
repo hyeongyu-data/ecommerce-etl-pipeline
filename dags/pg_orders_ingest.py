@@ -1,7 +1,7 @@
 """DAG 1: PG 주문 수집.
 
 날짜 파티션 단위로 합성 원천 생성 → 통합 스키마 변환 → 품질검사 → staging(parquet).
-BigQuery 적재는 별도 DAG(계획 9~10일차). 로직은 전부 `ecommerce_etl` 패키지에 있고
+통합 적재는 별도 DAG(`warehouse_orders_load`). 로직은 전부 `ecommerce_etl` 패키지에 있고
 여기서는 태스크 wiring만 한다.
 
 수동 실행:
