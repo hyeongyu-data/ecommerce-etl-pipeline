@@ -126,6 +126,9 @@ Application Default Credentials를 컨테이너에 읽기 전용으로 연결하
 `GCP_PROJECT_ID=ecommerce-etl-pipeline-508205`, `BQ_DATASET=ecommerce_etl_dev`를
 설정합니다. 날짜 파티션을 임시 테이블로 먼저 적재한 뒤 같은 날짜를 교체하므로
 재실행해도 중복되지 않습니다. 자격 증명 파일과 개인정보는 저장소에 넣지 않습니다.
+적재 DAG는 `bigquery_orders_load`이며, 선행 소스 DAG가 생성한 날짜별 staging
+파일을 읽습니다. 수동 검증은 `docker compose exec airflow-scheduler airflow dags test
+bigquery_orders_load 2026-09-01` 명령으로 실행합니다.
 
 ```
 .
