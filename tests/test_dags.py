@@ -44,3 +44,11 @@ def test_openmarket_dag_structure(dagbag):
     assert set(dag.get_task("transform_to_staging").upstream_task_ids) == {"fetch"}
     assert set(dag.get_task("quality_check").upstream_task_ids) == {"transform_to_staging"}
     assert dag.catchup is False
+
+
+def test_ga4_dag_structure(dagbag):
+    dag = dagbag.dags["ga4_events_ingest"]
+    assert {t.task_id for t in dag.tasks} == {"generate_raw", "validate_and_stage"}
+    assert set(dag.get_task("validate_and_stage").upstream_task_ids) == {"generate_raw"}
+    assert dag.catchup is False
+    assert dag.max_active_runs == 1

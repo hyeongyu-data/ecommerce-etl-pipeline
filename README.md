@@ -20,7 +20,7 @@
 ```
 
 - **수집**: 소스마다 DAG 1개. PG는 날짜 파티션 CSV를 일별 배치처럼 읽고, 오픈마켓은 목업 API를
-  호출하며, GA4는 Data API로 이벤트를 가져옵니다(시간 부족 시 목업 JSON 대체).
+  호출하며, GA4는 현재 보고서 형태의 목업 JSON을 생성합니다(실제 Data API 연동은 후속 범위).
 - **정제·통합**: 소스별 원본 필드를 [`docs/SCHEMA.md`](docs/SCHEMA.md)의 통합 주문 스키마로 매핑합니다.
 - **적재**: BigQuery `orders_unified`(날짜 파티션 + `source` 클러스터). 적재 전 품질 체크.
 - **대시보드**: 소스별 주문 수·매출 추이(대안: Looker Studio).
@@ -80,6 +80,36 @@ docker compose exec airflow-scheduler airflow dags test openmarket_orders_ingest
 
 BigQuery 적재는 별도 DAG로 이어집니다(계획 9~10일차).
 
+## DAG 3 — GA4 목업 구매 보고서
+
+GA4 Data API의 보고서 형태(`dimensionHeaders`·`metricHeaders`·`rows`)를 흉내 낸
+**결정론적 합성 JSON**을 날짜별로 생성합니다. 실제 Google API 호출이나 인증은 하지 않으며,
+목업 실행 성공은 실제 GA4 연동 검증을 의미하지 않습니다.
+
+`generate_raw → validate_and_stage`: 입력 계약과 공통 Q1~Q7 품질검사(위반 허용 0)를
+모두 통과한 뒤에만 staging을 씁니다. 자세한 매핑과 제약은 [통합 스키마](docs/SCHEMA.md#2-3-ga4-구매-보고서--ga4-현재는-목업)를 참고하세요.
+
+```shell
+docker compose build       # 새 코어 코드도 Airflow 이미지에 설치
+docker compose up -d
+docker compose exec airflow-scheduler airflow dags test ga4_events_ingest 2026-09-01
+# 원천: data/raw/ga4/order_date=2026-09-01/report.json
+# 결과: data/staging/ga4/order_date=2026-09-01/orders.parquet
+```
+
+- 속성 시간대는 `Asia/Seoul`, 통화는 KRW, 이벤트는 purchase로 제한합니다.
+- 보고서의 누락·중복 헤더, 잘못된 행 구조, 대상일 밖 날짜, 거래 내 중복 상품,
+  불일치하는 거래 시각, 음수·소수 수량/금액 및 소수 단가는 명시적으로 실패합니다.
+- 거래별 상품 ID를 정렬하여 라인 번호를 부여합니다. 입력 순서만 바뀌어도 키는 유지됩니다.
+  같은 날짜 재실행은 같은 경로에 덮어쓰며 `ingested_at`은 새 처리 시각입니다.
+- 빈 보고서는 정상적인 0행 결과로 저장하지만, 수집 오류·손상된 JSON은 빈 성공으로 처리하지 않습니다.
+  입력·품질 실패 시 raw와 이전 staging을 보존합니다. 공통 저장 함수의 쓰기는 비원자적이므로
+  디스크 오류 시 기존 결과 보존까지 보장하지는 않습니다.
+- DAG는 동시 활성 실행을 1개로 제한합니다. 오늘 날짜의 목업은 아직 지나지 않은 시간대도 만들 수 있어
+  미래 시각 검사에서 실패할 수 있습니다. 재현 검증은 과거 날짜로 수행하세요.
+- 실제 GA4 속성의 필드 조합 호환성, 인증, 페이지 처리, 보고서 집계·지연 도착 처리는 후속 작업입니다.
+  합성 소스별 주문을 실제 결제와 GA4 구매 이벤트의 중복 제거가 끝난 매출로 해석하지 않습니다.
+
 ## 검증
 
 ```shell
@@ -99,7 +129,8 @@ docker compose config        # compose 문법 확인
 │   ├── staging.py        # staging parquet 쓰기 (소스 공용)
 │   ├── catalog.py        # 상품 카탈로그 (소스 공용)
 │   ├── pg/               # PG 소스: generate(합성) · transform(통합 매핑)
-│   └── openmarket/       # 오픈마켓 소스: client(HTTP) · transform
+│   ├── openmarket/       # 오픈마켓 소스: client(HTTP) · transform
+│   └── ga4/              # GA4 목업 보고서: generate · transform(검증 후 저장)
 ├── dags/                 # Airflow DAG (컨테이너에 바인드 마운트)
 ├── mock/                 # 로컬 목업 오픈마켓 API (compose 서비스로 실행)
 ├── scripts/              # 로컬 편의 스크립트 (합성 데이터 생성 등)
