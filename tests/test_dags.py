@@ -55,7 +55,7 @@ def test_ga4_dag_structure(dagbag):
 
 
 def test_bigquery_load_dag_structure(dagbag):
-    dag = dagbag.dags["bigquery_orders_load"]
+    dag = dagbag.dags["warehouse_orders_load"]
     assert {t.task_id for t in dag.tasks} == {"load_partition"}
     assert dag.schedule is None
     assert dag.catchup is False

@@ -1,4 +1,4 @@
-"""DAG: 세 소스의 staging 주문을 BigQuery 날짜 파티션으로 교체 적재한다."""
+"""DAG: 세 소스의 staging 주문을 DuckDB 날짜 파티션으로 교체 적재한다."""
 
 from __future__ import annotations
 
@@ -24,15 +24,15 @@ def _order_date() -> date:
 
 
 @dag(
-    dag_id="bigquery_orders_load",
+    dag_id="warehouse_orders_load",
     schedule=None,
     start_date=pendulum.datetime(2026, 9, 1, tz="Asia/Seoul"),
     catchup=False,
     max_active_runs=1,
-    tags=["bigquery", "load"],
+    tags=["duckdb", "load"],
     doc_md=__doc__,
 )
-def bigquery_orders_load():
+def warehouse_orders_load():
     @task
     def load_partition() -> int:
         load_date = _order_date()
@@ -49,7 +49,7 @@ def bigquery_orders_load():
                 frames.append(pd.read_parquet(path))
         if not frames:
             raise FileNotFoundError(f"staging 파일이 없습니다: {load_date}")
-        combined = pd.concat(frames, ignore_index=True)
+        combined = pd.concat(frames, ignore_index=True).loc[:, list(schema.UNIFIED_COLUMNS)]
         result = check(combined)
         if not result.passed:
             raise ValueError(f"통합 품질검사 실패: {result.violations}")
@@ -58,4 +58,4 @@ def bigquery_orders_load():
     load_partition()
 
 
-bigquery_orders_load()
+warehouse_orders_load()
