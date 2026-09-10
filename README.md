@@ -121,6 +121,12 @@ docker compose config        # compose 문법 확인
 
 ## 저장소 구조
 
+BigQuery 적재는 `ecommerce_etl.bigquery`가 담당합니다. 로컬 Docker 실행에서는
+Application Default Credentials를 컨테이너에 읽기 전용으로 연결하고,
+`GCP_PROJECT_ID=ecommerce-etl-pipeline-508205`, `BQ_DATASET=ecommerce_etl_dev`를
+설정합니다. 날짜 파티션을 임시 테이블로 먼저 적재한 뒤 같은 날짜를 교체하므로
+재실행해도 중복되지 않습니다. 자격 증명 파일과 개인정보는 저장소에 넣지 않습니다.
+
 ```
 .
 ├── src/ecommerce_etl/    # 수집·정제 코어 로직 (Airflow 무관, 순수 파이썬)
