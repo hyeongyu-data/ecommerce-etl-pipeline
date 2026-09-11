@@ -54,6 +54,22 @@ DAG는 `dags/`에 두면 컨테이너에 자동 반영됩니다(단, DAG가 impo
 패키지는 이미지에 설치되므로 의존성이 바뀌면 `docker compose build` 필요). 개별 도구는
 `uv` 등 없이 표준 `venv` + `pip`만으로 동작합니다.
 
+### 다른 로컬 스택과 동시 실행
+
+Compose 프로젝트 이름을 `ecommerce-etl-pipeline`으로 고정했으므로 컨테이너·볼륨·네트워크는
+모두 이 접두사로 격리됩니다. **호스트에 노출하는 포트는 Airflow 웹 UI `18080` 하나뿐**이며
+(`postgres`·`mock-openmarket`은 컨테이너 내부 전용), 다른 Airflow 스택 등과 겹치면
+`.env`의 `AIRFLOW_WEB_PORT`로 바꿉니다.
+
+```shell
+AIRFLOW_WEB_PORT=18090 docker compose up -d   # 18080이 이미 쓰이는 경우
+```
+
+다른 프로젝트의 실제 컨테이너·볼륨·포트 이름은 그쪽 compose 설정·실행 방식에 따라 달라질
+수 있으므로 이 저장소가 보장하는 것은 "우리 쪽 호스트 포트는 하나뿐"이라는 사실입니다. 실제로
+호스트 `18080`을 이미 쓰는 다른 Airflow 스택이 떠 있는 상태에서 `AIRFLOW_WEB_PORT=18090`으로
+이 스택을 함께 기동·종료해 서로 영향이 없음을 확인했습니다.
+
 ## DAG 1 — PG 주문 수집
 
 합성 PG 주문을 날짜 파티션으로 수집·정제해 staging(parquet)에 적재합니다.
