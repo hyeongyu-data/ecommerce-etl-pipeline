@@ -33,7 +33,6 @@ x-airflow-common: &airflow-common
   volumes:
     - ./dags:/opt/airflow/dags
     - ./data:/opt/airflow/data
-    - ${GOOGLE_APPLICATION_CREDENTIALS:-/dev/null}:/opt/airflow/gcp/application_default_credentials.json:ro
     - airflow-logs:/opt/airflow/logs
     - airflow-plugins:/opt/airflow/plugins
   user: "${AIRFLOW_UID:-50000}:0"
