@@ -3,7 +3,7 @@
 [project]
 name = "ecommerce-etl-pipeline"
 version = "0.1.0"
-description = "이종 데이터소스(PG 주문·오픈마켓 주문·GA4 이벤트)를 Airflow로 수집·정제해 BigQuery에 통합 적재하는 미니 ETL 파이프라인"
+description = "이종 데이터소스(PG 주문·오픈마켓 주문·GA4 이벤트)를 Airflow로 수집·정제해 통합 주문 테이블로 적재하는 미니 ETL 파이프라인 (로컬 DuckDB, 설계 목표 BigQuery)"
 requires-python = ">=3.12"
 # DAG 런타임 의존성 (Airflow·provider는 베이스 이미지에 포함되므로 제외).
 dependencies = [
